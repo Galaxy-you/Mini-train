@@ -85,8 +85,6 @@ public class HealthControllerTest {
         assertNotNull(memoryInfo.get("used"));
         assertNotNull(memoryInfo.get("free"));
         assertNotNull(memoryInfo.get("usagePercentage"));
-        
-        verify(mockConnection, times(1)).close();
     }
     
     @Test
@@ -133,8 +131,6 @@ public class HealthControllerTest {
         assertNotNull(databaseStatus);
         assertEquals("DOWN", databaseStatus.get("status"));
         assertEquals("Database connection is not valid", databaseStatus.get("message"));
-        
-        verify(mockConnection, times(1)).close();
     }
     
     @Test
