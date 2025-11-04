@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 排除规则：指定不需要检查的类和bug类型 -->
+    
+    <!-- 排除测试类 -->
+    <Match>
+        <Class name="~.*Test.*" />
+    </Match>
+    
+    <!-- 排除自动生成的类 -->
+    <Match>
+        <Class name="~.*Application.*" />
+    </Match>
+    
+    <!-- 排除配置类中的一些无关紧要的警告 -->
+    <Match>
+        <Class name="~.*Config.*" />
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+    </Match>
+    
+    <!-- 排除DTO类中的序列化警告 -->
+    <Match>
+        <Class name="~.*DTO.*" />
+        <Bug pattern="SE_NO_SERIALVERSIONID" />
+    </Match>
+    
+    <!-- 排除实体类中的序列化警告 -->
+    <Match>
+        <Package name="com.mini12306.model" />
+        <Bug pattern="SE_NO_SERIALVERSIONID" />
+    </Match>
+    
+    <!-- 排除一些Spring相关的误报 -->
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+        <Field name="~.*Repository.*" />
+    </Match>
+    
+    <Match>
+        <Bug pattern="UWF_UNWRITTEN_FIELD" />
+        <Field name="~.*Service.*" />
+    </Match>
+    
+    <!-- 排除一些常见的误报 -->
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP" />
+    </Match>
+    
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2" />
+    </Match>
+</FindBugsFilter>

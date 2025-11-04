@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <!-- 包含规则：指定需要检查的包和类 -->
+    
+    <!-- 检查所有service包下的类 -->
+    <Match>
+        <Package name="com.mini12306.service" />
+    </Match>
+    
+    <!-- 检查所有controller包下的类 -->
+    <Match>
+        <Package name="com.mini12306.controller" />
+    </Match>
+    
+    <!-- 检查所有util包下的类 -->
+    <Match>
+        <Package name="com.mini12306.util" />
+    </Match>
+    
+    <!-- 检查所有model包下的类 -->
+    <Match>
+        <Package name="com.mini12306.model" />
+    </Match>
+    
+    <!-- 检查所有repository包下的类 -->
+    <Match>
+        <Package name="com.mini12306.repository" />
+    </Match>
+    
+    <!-- 特别关注的bug类型 -->
+    <Match>
+        <!-- 空指针异常 -->
+        <Bug pattern="NP_NULL_ON_SOME_PATH" />
+    </Match>
+    
+    <Match>
+        <!-- 资源泄漏 -->
+        <Bug pattern="OS_OPEN_STREAM" />
+    </Match>
+    
+    <Match>
+        <!-- SQL注入 -->
+        <Bug pattern="SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE" />
+    </Match>
+    
+    <Match>
+        <!-- 线程安全问题 -->
+        <Bug pattern="IS2_INCONSISTENT_SYNC" />
+    </Match>
+</FindBugsFilter>

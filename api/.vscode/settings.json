@@ -1,0 +1,47 @@
+{
+    "java.compile.nullAnalysis.mode": "disabled",
+    "sqltools.connections": [
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "8.146.198.87",
+            "port": 10055,
+            "driver": "MySQL",
+            "name": "FMS",
+            "username": "FMS_API",
+            "database": "FMS_PELAR"
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "45.64.113.148",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "LaF",
+            "username": "root",
+            "database": "LAF",
+            "password": "mysql_reDdJd"
+        },
+        {
+            "mysqlOptions": {
+                "authProtocol": "default",
+                "enableSsl": "Disabled"
+            },
+            "previewLimit": 50,
+            "server": "localhost",
+            "port": 3306,
+            "driver": "MySQL",
+            "name": "Mini12306",
+            "database": "Mini12306",
+            "username": "Mini12306",
+            "password": "C52wEARsX8TdZemE"
+        }
+    ],
+    "java.jdt.ls.vmargs": "-XX:+UseParallelGC -XX:GCTimeRatio=4 -XX:AdaptiveSizePolicyWeight=90 -Dsun.zip.disableMemoryMapping=true -Xmx2G -Xms100m -Xlog:disable"
+}
