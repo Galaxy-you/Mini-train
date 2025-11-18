@@ -177,8 +177,8 @@ public class OrderServiceImpl implements OrderService {
             ticket.setTrainCode(train.getCode());
             ticket.setTrainType(train.getType());
             // 设置起始站和终点站ID
-            ticket.setStartStationId(request.getStartStationId());
-            ticket.setEndStationId(request.getEndStationId());
+            ticket.setStartStationId(train.getStartStationId());
+            ticket.setEndStationId(train.getEndStationId());
             // 设置起始站和终点站名称
             ticket.setStartStation(request.getStartStation());
             ticket.setEndStation(request.getEndStation());
