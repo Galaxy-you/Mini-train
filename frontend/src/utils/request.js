@@ -1,11 +1,18 @@
 import axios from 'axios';
 import { ElMessage } from 'element-plus';
 
+// 根据环境变量确定API基础URL
+// 开发环境：如果设置了VUE_APP_API_BASE_URL环境变量，则使用它；否则使用代理
+// 生产环境：使用实际的后端地址
+const baseURL = process.env.VUE_APP_API_BASE_URL || '/api';
+
 // 创建axios实例
 const service = axios.create({
-  baseURL: '/api', // API基础URL
+  baseURL: baseURL, // API基础URL
   timeout: 15000 // 请求超时时间
 });
+
+console.log('API Base URL:', baseURL);
 
 // 请求拦截器
 service.interceptors.request.use(

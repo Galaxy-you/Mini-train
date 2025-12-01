@@ -194,7 +194,16 @@ export default {
   justify-content: center;
   padding: 60px;
   color: #fff;
+  position: relative;
+  overflow: hidden;
+  /* 添加背景图片 */
+;
 }
+.brand-section {
+  background-image:
+    url('@/assets/train-bg.jpg');
+}
+
 
 .brand-content {
   max-width: 500px;

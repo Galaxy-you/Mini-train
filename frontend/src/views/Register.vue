@@ -295,6 +295,14 @@ export default {
   justify-content: center;
   padding: 60px;
   color: #fff;
+  position: relative;
+  overflow: hidden;
+  /* 添加高铁背景图片 - 渐变遮罩 + 图片 */
+  background-image:
+      url('@/assets/train-bg.jpg');
+  background-size: cover;
+  background-position: center;
+  background-repeat: no-repeat;
 }
 
 .brand-content {
@@ -431,49 +439,3 @@ export default {
 }
 </style>
 
-<style scoped>
-.register-container {
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  background-color: #f0f2f5;
-  padding: 20px 0;
-}
-
-.register-box {
-  width: 500px;
-  padding: 30px;
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 12px 0 rgba(0, 0, 0, 0.1);
-}
-
-.title {
-  font-size: 26px;
-  font-weight: bold;
-  color: #409EFF;
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.register-form {
-  margin-top: 20px;
-}
-
-.register-button {
-  width: 100%;
-}
-
-.register-links {
-  display: flex;
-  justify-content: flex-end;
-  margin-top: 15px;
-  font-size: 14px;
-}
-
-.register-links a {
-  color: #409EFF;
-  text-decoration: none;
-}
-</style>

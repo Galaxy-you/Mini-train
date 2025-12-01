@@ -8,3 +8,6 @@ npm run serve
 // 运行管理前端
 cd admin
 npm run serve
+
+// 跨设备
+修改 frontend/.env/development.local中的IP地址
