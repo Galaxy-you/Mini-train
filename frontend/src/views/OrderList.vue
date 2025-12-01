@@ -1,88 +1,153 @@
 <template>
-  <div class="order-list-container page-container">
-    <h2 class="page-title">订单管理</h2>
-    
-    <el-card v-loading="loading">
-      <el-tabs v-model="activeTab" @tab-click="handleTabClick">
-        <el-tab-pane label="全部订单" name="all"></el-tab-pane>
-        <el-tab-pane label="待支付" name="unpaid"></el-tab-pane>
-        <el-tab-pane label="已完成" name="completed"></el-tab-pane>
-        <el-tab-pane label="已取消" name="canceled"></el-tab-pane>
+  <div class="order-list-container">
+    <!-- 标签页 -->
+    <el-card class="tab-card" shadow="never">
+      <el-tabs v-model="activeTab">
+        <el-tab-pane label="全部订单" name="all">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><tickets /></el-icon>
+              全部订单
+            </span>
+          </template>
+        </el-tab-pane>
+        <el-tab-pane label="待支付" name="unpaid">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><wallet /></el-icon>
+              待支付
+            </span>
+          </template>
+        </el-tab-pane>
+        <el-tab-pane label="已完成" name="completed">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><success-filled /></el-icon>
+              已完成
+            </span>
+          </template>
+        </el-tab-pane>
+        <el-tab-pane label="已取消" name="canceled">
+          <template #label>
+            <span class="tab-label">
+              <el-icon><circle-close /></el-icon>
+              已取消
+            </span>
+          </template>
+        </el-tab-pane>
       </el-tabs>
-      
-      <div class="order-list" v-if="orders.length > 0">
-        <div class="order-item" v-for="order in orders" :key="order.orderNo">
-          <div class="order-header">
-            <div class="order-no">订单号：{{ order.orderNo }}</div>
-            <div class="order-status">{{ getOrderStatusText(order.status) }}</div>
+    </el-card>
+
+    <!-- 订单列表 -->
+    <div class="order-list" v-loading="loading">
+      <div class="order-card" v-for="order in orders" :key="order.orderNo">
+        <div class="order-header">
+          <div class="order-info">
+            <span class="order-no">订单号：{{ order.orderNo }}</span>
+            <span class="order-time">{{ formatTime(order.createTime) }}</span>
           </div>
-          
-          <div class="order-content">
-            <div class="train-info">
-              <div class="train-route">
-                <div class="train-number">{{ order.trainNumber }}</div>
-                <div class="train-stations">{{ formatStation(order.startStation) }} → {{ formatStation(order.endStation) }}</div>
+          <el-tag :type="getStatusType(order.status)" size="large">
+            {{ getOrderStatusText(order.status) }}
+          </el-tag>
+        </div>
+
+        <div class="order-body">
+          <div class="train-info">
+            <div class="train-number">{{ order.trainNumber }}</div>
+            <div class="train-route">
+              <div class="route-station">
+                <div class="station-name">{{ formatStation(order.startStation) }}</div>
+                <div class="station-time">{{ order.departureTime }}</div>
               </div>
-              <div class="train-time">
-                <div>出发：{{ order.departureTime }}</div>
-                <div>到达：{{ order.arrivalTime }}</div>
+              <div class="route-arrow">
+                <el-icon><right /></el-icon>
+                <span class="duration" v-if="calculateDuration(order.departureTime, order.arrivalTime)">
+                  {{ calculateDuration(order.departureTime, order.arrivalTime) }}
+                </span>
               </div>
-            </div>
-            
-            <div class="ticket-count">
-              车票数量：{{ order.ticketCount }}
-            </div>
-            
-            <div class="order-amount">
-              总金额：<span class="price">{{ formatPrice(order.totalAmount) }}</span>
+              <div class="route-station">
+                <div class="station-name">{{ formatStation(order.endStation) }}</div>
+                <div class="station-time">{{ order.arrivalTime }}</div>
+              </div>
             </div>
           </div>
-          
-          <div class="order-footer">
-            <div class="order-time">下单时间：{{ formatTime(order.createTime) }}</div>
-            <div class="order-actions">
-              <el-button size="small" @click="viewOrderDetail(order)">查看详情</el-button>
-              <el-button 
-                size="small" 
-                type="danger" 
-                @click="cancelOrder(order)"
-                v-if="order.status === 'UNPAID'"
-              >取消订单</el-button>
+
+          <div class="order-details">
+            <div class="detail-item">
+              <span class="label">车票数量</span>
+              <span class="value">{{ order.ticketCount }} 张</span>
+            </div>
+            <div class="detail-item total-amount">
+              <span class="label">订单金额</span>
+              <span class="value price">{{ formatPrice(order.totalAmount) }}</span>
             </div>
           </div>
         </div>
+
+        <div class="order-footer">
+          <el-button size="small" @click="viewOrderDetail(order)">查看详情</el-button>
+          <el-button
+              size="small"
+              type="danger"
+              v-if="order.status === 'UNPAID'"
+              @click="cancelOrder(order)"
+          >
+            取消订单
+          </el-button>
+          <el-button
+              size="small"
+              type="primary"
+              v-if="order.status === 'UNPAID'"
+              @click="payOrder(order)"
+          >
+            去支付
+          </el-button>
+        </div>
       </div>
-      
-      <el-empty description="暂无订单" v-else-if="!loading"></el-empty>
-    </el-card>
+
+      <!-- 空状态 -->
+      <el-empty
+          v-if="orders.length === 0 && !loading"
+          description="暂无订单"
+          :image-size="200"
+      />
+    </div>
   </div>
 </template>
 
 <script>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Tickets, Wallet, SuccessFilled, CircleClose, Right } from '@element-plus/icons-vue';
 import { orderAPI } from '@/api';
 import dataHelper from '@/utils/dataHelper';
-import { formatStation, formatPrice, formatDuration } from '@/utils/formatters';
+import { formatStation, formatPrice } from '@/utils/formatters';
 
 export default {
   name: 'OrderList',
+  components: {
+    Tickets,
+    Wallet,
+    SuccessFilled,
+    CircleClose,
+    Right
+  },
   setup() {
     const router = useRouter();
     const loading = ref(false);
-    const orders = ref([]);
+    const allOrders = ref([]); // 存储所有订单
+    const orders = ref([]); // 存储过滤后的订单
     const activeTab = ref('all');
-    
-    // 获取订单列表
+
     const fetchOrders = async () => {
       loading.value = true;
       try {
         const response = await orderAPI.listUserOrders();
-        console.log('获取到的订单列表响应:', response);
         const extractedData = dataHelper.extractApiData(response);
         const orderData = dataHelper.ensureArray(extractedData);
-        orders.value = filterOrders(orderData);
+        allOrders.value = orderData; // 保存所有订单
+        orders.value = filterOrders(orderData); // 应用过滤
       } catch (error) {
         console.error('获取订单列表失败:', error);
         ElMessage.error('获取订单列表失败');
@@ -90,33 +155,95 @@ export default {
         loading.value = false;
       }
     };
-    
-    // 根据当前选中的标签过滤订单
-    const filterOrders = (allOrders) => {
+
+    const filterOrders = (orderList) => {
       if (activeTab.value === 'all') {
-        return allOrders;
+        return orderList;
       }
-      
+
       const statusMap = {
-        unpaid: 'UNPAID',
-        completed: 'COMPLETED',
-        canceled: 'CANCELED'
+        unpaid: ['UNPAID'],
+        completed: ['PAID', 'COMPLETED'],
+        canceled: ['CANCELED']
       };
-      
-      return allOrders.filter(order => order.status === statusMap[activeTab.value]);
+
+      const targetStatuses = statusMap[activeTab.value] || [];
+      return orderList.filter(order => targetStatuses.includes(order.status));
     };
-    
-    // 处理标签切换
-    const handleTabClick = () => {
-      fetchOrders();
-    };
-    
-    // 查看订单详情
+
+    // 监听 activeTab 变化，自动重新过滤订单
+    watch(activeTab, () => {
+      orders.value = filterOrders(allOrders.value);
+    });
+
     const viewOrderDetail = (order) => {
       router.push(`/order/${order.orderNo}`);
     };
-    
-    // 取消订单
+
+    const getStatusType = (status) => {
+      const typeMap = {
+        'UNPAID': 'warning',
+        'PAID': 'success',
+        'COMPLETED': 'success',
+        'CANCELED': 'info'
+      };
+      return typeMap[status] || 'info';
+    };
+
+    const calculateDuration = (startTime, endTime) => {
+      if (!startTime || !endTime) return '';
+
+      try {
+        // 处理时间格式，可能是 HH:mm 或完整的日期时间
+        if (startTime.includes(':') && startTime.length <= 5) {
+          // 纯时间格式 HH:mm
+          const startParts = startTime.split(':');
+          const endParts = endTime.split(':');
+
+          if (startParts.length < 2 || endParts.length < 2) return '';
+
+          const startMinutes = parseInt(startParts[0]) * 60 + parseInt(startParts[1]);
+          const endMinutes = parseInt(endParts[0]) * 60 + parseInt(endParts[1]);
+
+          if (isNaN(startMinutes) || isNaN(endMinutes)) return '';
+
+          let diff = endMinutes - startMinutes;
+          if (diff < 0) diff += 24 * 60;
+
+          const hours = Math.floor(diff / 60);
+          const minutes = diff % 60;
+          return `${hours}小时${minutes > 0 ? minutes + '分' : ''}`;
+        } else {
+          // 完整日期时间格式
+          const start = new Date(startTime);
+          const end = new Date(endTime);
+
+          if (isNaN(start.getTime()) || isNaN(end.getTime())) return '';
+
+          const diffMs = end - start;
+          const diffMinutes = Math.floor(diffMs / (1000 * 60));
+          const hours = Math.floor(diffMinutes / 60);
+          const minutes = diffMinutes % 60;
+          return `${hours}小时${minutes > 0 ? minutes + '分' : ''}`;
+        }
+      } catch (error) {
+        console.error('时间计算错误:', error);
+        return '';
+      }
+    };
+
+    const formatTime = (dateTime) => {
+      if (!dateTime) return '';
+      const date = new Date(dateTime);
+      return date.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    };
+
     const cancelOrder = (order) => {
       ElMessageBox.confirm('确定要取消该订单吗?', '提示', {
         confirmButtonText: '确定',
@@ -126,15 +253,18 @@ export default {
         try {
           await orderAPI.cancelOrder(order.orderNo);
           ElMessage.success('订单取消成功');
-          fetchOrders(); // 刷新订单列表
+          fetchOrders();
         } catch (error) {
           console.error('取消订单失败:', error);
           ElMessage.error('取消订单失败');
         }
       }).catch(() => {});
     };
-    
-    // 获取订单状态文本
+
+    const payOrder = (order) => {
+      router.push(`/order/${order.orderNo}`);
+    };
+
     const getOrderStatusText = (status) => {
       const statusMap = {
         'UNPAID': '待支付',
@@ -144,30 +274,24 @@ export default {
       };
       return statusMap[status] || status;
     };
-    
-    // 格式化时间
-    const formatTime = (timestamp) => {
-      if (!timestamp) return '';
-      const date = new Date(timestamp);
-      return date.toLocaleString('zh-CN');
-    };
-    
+
     onMounted(() => {
       fetchOrders();
     });
-    
+
     return {
       loading,
       orders,
       activeTab,
-      handleTabClick,
       viewOrderDetail,
       cancelOrder,
+      payOrder,
       getOrderStatusText,
+      getStatusType,
+      calculateDuration,
       formatTime,
       formatStation,
-      formatPrice,
-      formatDuration
+      formatPrice
     };
   }
 }
@@ -175,91 +299,183 @@ export default {
 
 <style scoped>
 .order-list-container {
-  padding: 20px;
+  max-width: 1000px;
+  margin: 0 auto;
 }
 
+/* 标签卡片 */
+.tab-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.tab-label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+/* 订单列表 */
 .order-list {
-  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.order-item {
-  border: 1px solid #dcdfe6;
-  border-radius: 4px;
-  margin-bottom: 15px;
-  overflow: hidden;
+/* 订单卡片 */
+.order-card {
+  background: #fff;
+  border-radius: 12px;
+  padding: 20px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
+}
+
+.order-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
 }
 
 .order-header {
-  background-color: #f5f7fa;
-  padding: 12px 15px;
-  display: flex;
-  justify-content: space-between;
-  border-bottom: 1px solid #dcdfe6;
-}
-
-.order-no {
-  font-weight: bold;
-}
-
-.order-status {
-  color: #409EFF;
-  font-weight: bold;
-}
-
-.order-content {
-  padding: 15px;
   display: flex;
   justify-content: space-between;
   align-items: center;
+  padding-bottom: 16px;
+  border-bottom: 1px solid #e8e8e8;
+  margin-bottom: 16px;
+}
+
+.order-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-no {
+  font-size: 14px;
+  color: #262626;
+  font-weight: 500;
+}
+
+.order-time {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+/* 订单主体 */
+.order-body {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .train-info {
-  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.train-number {
+  font-size: 24px;
+  font-weight: 600;
+  color: #1890ff;
 }
 
 .train-route {
   display: flex;
   align-items: center;
-  margin-bottom: 10px;
+  gap: 24px;
 }
 
-.train-number {
-  font-size: 18px;
-  font-weight: bold;
-  margin-right: 15px;
-  color: #409EFF;
-}
-
-.train-time {
-  color: #606266;
-  font-size: 14px;
-}
-
-.ticket-count {
-  margin: 0 20px;
-}
-
-.order-amount {
-  text-align: right;
-}
-
-.price {
-  font-size: 18px;
-  font-weight: bold;
-  color: #F56C6C;
-}
-
-.order-footer {
-  padding: 12px 15px;
-  background-color: #f5f7fa;
+.route-station {
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  border-top: 1px solid #dcdfe6;
+  flex-direction: column;
+  gap: 4px;
 }
 
-.order-time {
-  color: #909399;
+.station-name {
+  font-size: 18px;
+  font-weight: 500;
+  color: #262626;
+}
+
+.station-time {
   font-size: 14px;
+  color: #595959;
+}
+
+.route-arrow {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  color: #1890ff;
+}
+
+.route-arrow .el-icon {
+  font-size: 20px;
+}
+
+.duration {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+/* 订单详情 */
+.order-details {
+  display: flex;
+  gap: 32px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+}
+
+.detail-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-item .label {
+  font-size: 12px;
+  color: #8c8c8c;
+}
+
+.detail-item .value {
+  font-size: 16px;
+  color: #262626;
+  font-weight: 500;
+}
+
+.total-amount .value.price {
+  font-size: 24px;
+  color: #ff4d4f;
+  font-weight: 600;
+}
+
+/* 订单底部 */
+.order-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 16px;
+  border-top: 1px solid #e8e8e8;
+  margin-top: 16px;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .train-route {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .order-details {
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .order-footer {
+    flex-direction: column;
+  }
 }
 </style>

@@ -1,82 +1,165 @@
 /* eslint-disable vue/multi-word-component-names */
 <template>
-  <div class="user-center-container page-container">
-    <h2 class="page-title">个人中心</h2>
-    
-    <el-card class="user-info-card" v-loading="loading">
-      <template #header>
-        <div class="card-header">
-          <span>基本信息</span>
-        </div>
-      </template>
-      
-      <div class="user-info-content" v-if="userInfo">
-        <div class="user-avatar">
-          <el-avatar :size="100" :src="avatarUrl">{{ userInfo.username?.charAt(0) || 'U' }}</el-avatar>
-        </div>
-        
-        <el-descriptions class="user-details" :column="1" border>
-          <el-descriptions-item label="用户名">{{ userInfo.username || '未知' }}</el-descriptions-item>
-          <el-descriptions-item label="真实姓名">{{ userInfo.realName || '未设置' }}</el-descriptions-item>
-          <el-descriptions-item label="身份证号">{{ formatIdNumber(userInfo.cardId) || '未设置' }}</el-descriptions-item>
-          <el-descriptions-item label="手机号">{{ userInfo.phone || '未设置' }}</el-descriptions-item>
-          <el-descriptions-item label="注册时间">{{ formatTime(userInfo.createTime) || '未知' }}</el-descriptions-item>
-        </el-descriptions>
-        
-        <div class="auth-status">
-          <el-tag 
-            :type="userInfo.authenticated ? 'success' : 'warning'" 
-            class="auth-tag"
-          >
+  <div class="user-center-container">
+    <div class="user-header">
+      <div class="user-profile">
+        <el-avatar :size="80" class="profile-avatar">
+          {{ userInfo.username ? userInfo.username.charAt(0).toUpperCase() : 'U' }}
+        </el-avatar>
+        <div class="profile-info">
+          <h2 class="username">{{ userInfo.username || '用户' }}</h2>
+          <el-tag :type="userInfo.authenticated ? 'success' : 'warning'" size="large">
+            <el-icon>
+              <component :is="userInfo.authenticated ? SuccessFilled : WarningFilled" />
+            </el-icon>
             {{ userInfo.authenticated ? '已实名认证' : '未实名认证' }}
           </el-tag>
-          
-          <el-button 
-            v-if="!userInfo.authenticated" 
-            type="primary" 
-            size="small"
-            @click="openAuthDialog"
-          >
-            实名认证
-          </el-button>
         </div>
       </div>
-      
-      <el-empty v-else-if="!loading" description="获取用户信息失败，请重试"></el-empty>
-    </el-card>
-    
-    <!-- <el-card class="stats-card">
-      <template #header>
-        <div class="card-header">
-          <span>使用统计</span>
-        </div>
-      </template>
-      
-      <div class="stats-content">
-        <div class="stat-item">
-          <div class="stat-icon">
-            <el-icon><location /></el-icon>
+      <el-button
+        v-if="!userInfo.authenticated"
+        type="primary"
+        size="large"
+        @click="openAuthDialog"
+      >
+        立即认证
+      </el-button>
+    </div>
+
+    <el-row :gutter="24">
+      <!-- 左侧：基本信息 -->
+      <el-col :xs="24" :lg="16">
+        <el-card class="info-card" shadow="hover" v-loading="loading">
+          <template #header>
+            <div class="card-header">
+              <el-icon><user /></el-icon>
+              <span>基本信息</span>
+            </div>
+          </template>
+
+          <div class="info-grid" v-if="userInfo">
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><user /></el-icon>
+                用户名
+              </div>
+              <div class="info-value">{{ userInfo.username || '未设置' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><user /></el-icon>
+                真实姓名
+              </div>
+              <div class="info-value">{{ userInfo.realName || '未设置' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><postcard /></el-icon>
+                身份证号
+              </div>
+              <div class="info-value">{{ formatIdNumber(userInfo.cardId) || '未设置' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><phone /></el-icon>
+                手机号码
+              </div>
+              <div class="info-value">{{ userInfo.phone || '未设置' }}</div>
+            </div>
+
+            <div class="info-item">
+              <div class="info-label">
+                <el-icon><calendar /></el-icon>
+                注册时间
+              </div>
+              <div class="info-value">{{ formatTime(userInfo.createTime) || '未知' }}</div>
+            </div>
           </div>
-          <div class="stat-value">{{ stats.orderCount || 0 }}</div>
-          <div class="stat-label">总订单</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-icon">
-            <el-icon><ticket /></el-icon>
+
+          <el-empty v-else-if="!loading" description="暂无信息" :image-size="100" />
+        </el-card>
+
+        <!-- 快捷操作 -->
+        <el-card class="action-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-icon><setting /></el-icon>
+              <span>快捷操作</span>
+            </div>
+          </template>
+
+          <div class="action-grid">
+            <div class="action-item" @click="$router.push('/order')">
+              <el-icon class="action-icon" color="#1890ff"><tickets /></el-icon>
+              <span class="action-label">我的订单</span>
+            </div>
+
+            <div class="action-item" @click="$router.push('/ticket')">
+              <el-icon class="action-icon" color="#52c41a"><ticket /></el-icon>
+              <span class="action-label">我的车票</span>
+            </div>
+
+            <div class="action-item" @click="$router.push('/passenger')">
+              <el-icon class="action-icon" color="#faad14"><user-filled /></el-icon>
+              <span class="action-label">乘车人</span>
+            </div>
+
+            <div class="action-item" @click="handleLogout">
+              <el-icon class="action-icon" color="#ff4d4f"><switch-button /></el-icon>
+              <span class="action-label">退出登录</span>
+            </div>
           </div>
-          <div class="stat-value">{{ stats.ticketCount || 0 }}</div>
-          <div class="stat-label">总车票</div>
-        </div>
-        <div class="stat-item">
-          <div class="stat-icon">
-            <el-icon><user /></el-icon>
+        </el-card>
+      </el-col>
+
+      <!-- 右侧：统计信息 -->
+      <el-col :xs="24" :lg="8">
+        <el-card class="stats-card" shadow="hover">
+          <template #header>
+            <div class="card-header">
+              <el-icon><data-analysis /></el-icon>
+              <span>使用统计</span>
+            </div>
+          </template>
+
+          <div class="stats-list">
+            <div class="stat-item">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                <el-icon><tickets /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stats.orderCount || 0 }}</div>
+                <div class="stat-label">总订单数</div>
+              </div>
+            </div>
+
+            <div class="stat-item">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                <el-icon><ticket /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stats.ticketCount || 0 }}</div>
+                <div class="stat-label">购票总数</div>
+              </div>
+            </div>
+
+            <div class="stat-item">
+              <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+                <el-icon><user /></el-icon>
+              </div>
+              <div class="stat-content">
+                <div class="stat-value">{{ stats.passengerCount || 0 }}</div>
+                <div class="stat-label">常用乘车人</div>
+              </div>
+            </div>
           </div>
-          <div class="stat-value">{{ stats.passengerCount || 0 }}</div>
-          <div class="stat-label">乘车人</div>
-        </div>
-      </div>
-    </el-card> -->
-    
+        </el-card>
+      </el-col>
+    </el-row>
+
     <!-- 实名认证对话框 -->
     <el-dialog
       v-model="authDialogVisible"
@@ -108,15 +191,34 @@
 
 <script>
 import { ref, reactive, onMounted } from 'vue';
-import { ElMessage } from 'element-plus';
+import { useRouter } from 'vue-router';
+import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  User, Postcard, Phone, Calendar, Setting,
+  Tickets, Ticket, UserFilled, SwitchButton,
+  DataAnalysis, SuccessFilled, WarningFilled
+} from '@element-plus/icons-vue';
 import { authAPI } from '@/api';
 import dataHelper from '@/utils/dataHelper';
 
 export default {
   name: 'UserCenter',
+  components: {
+    User, Postcard, Phone, Calendar, Setting,
+    Tickets, Ticket, UserFilled, SwitchButton,
+    DataAnalysis, SuccessFilled, WarningFilled
+  },
   setup() {
+    const router = useRouter();
     const loading = ref(false);
-    const userInfo = ref(null);
+    const userInfo = ref({
+      username: '',
+      realName: '',
+      cardId: '',
+      phone: '',
+      authenticated: false,
+      createTime: null
+    });
     const stats = ref({
       orderCount: 0,
       ticketCount: 0,
@@ -180,13 +282,9 @@ export default {
           userInfo.value.authenticated = userInfo.value.authStatus === 1;
         }
         
-        // 模拟使用统计数据
-        stats.value = {
-          orderCount: Math.floor(Math.random() * 10),
-          ticketCount: Math.floor(Math.random() * 20),
-          passengerCount: Math.floor(Math.random() * 5)
-        };
-        
+        // 获取用户统计数据
+        await getUserStats();
+
         // 使用用户名首字母和颜色生成头像
         const firstChar = userData.username?.charAt(0)?.toUpperCase() || 'U';
         avatarUrl.value = `https://ui-avatars.com/api/?name=${firstChar}&background=random&color=fff&size=100`;
@@ -198,6 +296,34 @@ export default {
       }
     };
     
+    // 获取用户统计数据
+    const getUserStats = async () => {
+      try {
+        const response = await authAPI.getUserStats();
+        console.log('获取到的统计数据响应:', response);
+
+        const extractedData = dataHelper.extractApiData(response);
+        const statsData = dataHelper.ensureObject(extractedData);
+
+        console.log('处理后的统计数据:', statsData);
+
+        // 更新统计数据
+        stats.value = {
+          orderCount: statsData.orderCount || 0,
+          ticketCount: statsData.ticketCount || 0,
+          passengerCount: statsData.passengerCount || 0
+        };
+      } catch (error) {
+        console.error('获取统计数据失败:', error);
+        // 失败时使用默认值
+        stats.value = {
+          orderCount: 0,
+          ticketCount: 0,
+          passengerCount: 0
+        };
+      }
+    };
+
     // 打开实名认证对话框
     const openAuthDialog = () => {
       authForm.realName = userInfo.value?.realName || '';
@@ -250,7 +376,20 @@ export default {
       const date = new Date(timestamp);
       return date.toLocaleString('zh-CN');
     };
-    
+
+    const handleLogout = () => {
+      ElMessageBox.confirm('确定要退出登录吗?', '提示', {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'warning'
+      }).then(() => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('userId');
+        ElMessage.success('退出成功');
+        router.push('/login');
+      }).catch(() => {});
+    };
+
     onMounted(() => {
       getUserInfo();
     });
@@ -259,7 +398,6 @@ export default {
       loading,
       userInfo,
       stats,
-      avatarUrl,
       authDialogVisible,
       authSubmitting,
       authForm,
@@ -268,7 +406,8 @@ export default {
       openAuthDialog,
       submitAuth,
       formatIdNumber,
-      formatTime
+      formatTime,
+      handleLogout
     };
   }
 }
@@ -276,78 +415,189 @@ export default {
 
 <style scoped>
 .user-center-container {
-  padding: 20px;
+  max-width: 1200px;
+  margin: 0 auto;
 }
 
-.user-info-card, .stats-card {
-  margin-bottom: 20px;
+/* 用户头部 */
+.user-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 32px;
+  margin-bottom: 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: #fff;
+}
+
+.user-profile {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.profile-avatar {
+  background: rgba(255, 255, 255, 0.2);
+  font-size: 32px;
+  font-weight: 600;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+}
+
+.profile-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.username {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0;
+}
+
+/* 信息卡片 */
+.info-card, .action-card, .stats-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
 }
 
 .card-header {
-  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 16px;
 }
 
-.user-info-content {
+.card-header .el-icon {
+  color: #1890ff;
+  font-size: 18px;
+}
+
+.info-grid {
+  display: grid;
+  gap: 20px;
+}
+
+.info-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.info-item:hover {
+  background: #f0f0f0;
+}
+
+.info-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #8c8c8c;
+  font-size: 14px;
+}
+
+.info-label .el-icon {
+  color: #1890ff;
+}
+
+.info-value {
+  color: #262626;
+  font-weight: 500;
+}
+
+/* 快捷操作 */
+.action-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 16px;
+}
+
+.action-item {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 12px;
+  padding: 24px;
+  background: #fafafa;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s;
 }
 
-.user-avatar {
-  margin-bottom: 20px;
+.action-item:hover {
+  background: #e6f7ff;
+  transform: translateY(-2px);
 }
 
-.user-details {
-  width: 100%;
-  max-width: 500px;
-  margin-bottom: 20px;
+.action-icon {
+  font-size: 32px;
 }
 
-.auth-status {
-  margin-top: 10px;
+.action-label {
+  font-size: 14px;
+  color: #595959;
+  font-weight: 500;
+}
+
+/* 统计卡片 */
+.stats-list {
   display: flex;
-  align-items: center;
-}
-
-.auth-tag {
-  margin-right: 10px;
-}
-
-.stats-content {
-  display: flex;
-  justify-content: space-around;
-  text-align: center;
-  padding: 20px 0;
+  flex-direction: column;
+  gap: 16px;
 }
 
 .stat-item {
-  flex: 1;
   display: flex;
-  flex-direction: column;
   align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
 }
 
 .stat-icon {
-  font-size: 24px;
-  color: #409EFF;
-  margin-bottom: 10px;
-  background-color: #ecf5ff;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
+  color: #fff;
+  font-size: 24px;
+}
+
+.stat-content {
+  flex: 1;
 }
 
 .stat-value {
-  font-size: 24px;
-  font-weight: bold;
-  color: #303133;
-  margin-bottom: 5px;
+  font-size: 28px;
+  font-weight: 600;
+  color: #262626;
+  line-height: 1;
+  margin-bottom: 4px;
 }
 
 .stat-label {
-  color: #909399;
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .user-header {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .action-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
 }
 </style>

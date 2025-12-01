@@ -21,6 +21,11 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
     List<Ticket> findByUserId(Long userId);
     
     /**
+     * 统计用户车票数量
+     */
+    long countByUserId(Long userId);
+
+    /**
      * 查询乘车人的所有车票
      */
     List<Ticket> findByPassengerId(Long passengerId);

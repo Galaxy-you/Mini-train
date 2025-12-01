@@ -7,5 +7,8 @@ import java.util.List;
 
 public interface PassengerRepository extends JpaRepository<Passenger, Long> {
     List<Passenger> findByUserId(Long userId);
+
+    long countByUserId(Long userId);
+
     void deleteByUserIdAndId(Long userId, Long id);
 }

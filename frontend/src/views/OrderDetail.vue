@@ -1,156 +1,202 @@
 /* eslint-disable vue/multi-word-component-names */
 <template>
-  <div class="order-detail-container page-container">
-    <h2 class="page-title">订单详情</h2>
-    
+  <div class="order-detail-container">
     <div v-loading="loading">
-      <el-card class="order-info-card" v-if="orderInfo">
-        <div class="order-header">
-          <div class="order-status">
-            <div class="status-text">{{ getOrderStatusText(orderInfo.status) }}</div>
-            <div class="status-desc" v-if="orderInfo.status === 'UNPAID'">
+      <!-- 订单状态卡片 -->
+      <el-card class="status-card" v-if="orderInfo" shadow="never">
+        <div class="status-banner" :class="`status-${orderInfo.status?.toLowerCase()}`">
+          <el-icon class="status-icon">
+            <component :is="getStatusIcon(orderInfo.status)" />
+          </el-icon>
+          <div class="status-info">
+            <h2 class="status-title">{{ getOrderStatusText(orderInfo.status) }}</h2>
+            <p class="status-desc" v-if="orderInfo.status === 'UNPAID'">
               请尽快完成支付，订单将在30分钟内自动取消
-            </div>
+            </p>
           </div>
-        </div>
-        
-        <el-divider></el-divider>
-        
-        <div class="train-info">
-          <div class="train-number">{{ orderInfo.trainCode || orderInfo.trainNumber }}</div>
-          <div class="train-route">
-            <div class="station-time">
-              <div class="time">{{ extractTime(orderInfo.departureTime || orderInfo.startTime) }}</div>
-              <div class="date">{{ extractDate(orderInfo.departureTime || orderInfo.startTime) }}</div>
-            </div>
-            <div class="station-name">{{ formatStation(orderInfo.startStation) }}</div>
-          </div>
-          <div class="route-divider">
-            <div class="arrow"></div>
-          </div>
-          <div class="train-route">
-            <div class="station-time">
-              <div class="time">{{ extractTime(orderInfo.arrivalTime || orderInfo.endTime) }}</div>
-              <div class="date">{{ extractDate(orderInfo.arrivalTime || orderInfo.endTime) }}</div>
-            </div>
-            <div class="station-name">{{ formatStation(orderInfo.endStation) }}</div>
-          </div>
-        </div>
-        
-        <el-divider></el-divider>
-        
-        <div class="ticket-list">
-          <h3>车票信息</h3>
-          <div class="ticket-item" v-for="ticket in tickets" :key="ticket.ticketNo">
-            <div class="passenger-info">
-              <div class="passenger-name">{{ ticket.passengerName }}</div>
-              <div class="passenger-id">{{ ticket.passengerIdNumber }}</div>
-            </div>
-            <div class="seat-info">
-              <div>{{ ticket.carNumber }}车</div>
-              <div>{{ ticket.seatNumber }}号</div>
-              <div>{{ ticket.seatType }}</div>
-            </div>
-            <div class="ticket-price">
-              {{ formatPrice(ticket.price) }}
-            </div>
-          </div>
-        </div>
-        
-        <el-divider></el-divider>
-        
-        <div class="order-summary">
-          <div class="summary-item">
-            <span class="label">订单号：</span>
-            <span class="value">{{ orderInfo.orderNo }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">下单时间：</span>
-            <span class="value">{{ formatTime(orderInfo.createTime) }}</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">票数：</span>
-            <span class="value">{{ tickets.length }} 张</span>
-          </div>
-          <div class="summary-item">
-            <span class="label">总金额：</span>
-            <span class="value price">{{ formatPrice(orderInfo.totalAmount) }}</span>
-          </div>
-        </div>
-        
-        <div class="order-actions">
-          <el-button type="primary" v-if="orderInfo.status === 'UNPAID'" @click="showPaymentDialog">去支付</el-button>
-          <el-button type="danger" v-if="orderInfo.status === 'UNPAID'" @click="cancelOrder">取消订单</el-button>
-          <el-button @click="goBack">返回</el-button>
         </div>
       </el-card>
-      
-      <el-empty v-else-if="!loading" description="订单不存在或已被删除"></el-empty>
+
+      <!-- 行程信息卡片 -->
+      <el-card class="journey-card" v-if="orderInfo" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <el-icon><train /></el-icon>
+            <span>行程信息</span>
+          </div>
+        </template>
+
+        <div class="journey-content">
+          <div class="train-header">
+            <span class="train-number">{{ orderInfo.trainCode || orderInfo.trainNumber }}</span>
+            <span class="travel-date">{{ formatDate(orderInfo.departureTime || orderInfo.startTime) }}</span>
+          </div>
+
+          <div class="journey-route">
+            <div class="journey-point">
+              <div class="point-time">{{ extractTime(orderInfo.departureTime || orderInfo.startTime) }}</div>
+              <div class="point-station">{{ formatStation(orderInfo.startStation) }}</div>
+            </div>
+
+            <div class="journey-line">
+              <div class="line-circle"></div>
+              <div class="line-bar"></div>
+              <div class="line-arrow">
+                <el-icon><right /></el-icon>
+              </div>
+              <div class="line-bar"></div>
+              <div class="line-circle"></div>
+            </div>
+
+            <div class="journey-point">
+              <div class="point-time">{{ extractTime(orderInfo.arrivalTime || orderInfo.endTime) }}</div>
+              <div class="point-station">{{ formatStation(orderInfo.endStation) }}</div>
+            </div>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 乘客车票信息 -->
+      <el-card class="tickets-card" v-if="tickets.length > 0" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <el-icon><user /></el-icon>
+            <span>乘客信息（共{{ tickets.length }}张）</span>
+          </div>
+        </template>
+
+        <div class="tickets-list">
+          <div class="ticket-row" v-for="(ticket, index) in tickets" :key="ticket.ticketNo">
+            <div class="ticket-index">{{ index + 1 }}</div>
+            <div class="ticket-passenger">
+              <div class="passenger-name">{{ ticket.passengerName }}</div>
+              <div class="passenger-id">{{ formatIdNumber(ticket.passengerIdNumber) }}</div>
+            </div>
+            <div class="ticket-seat">
+              <el-tag size="small">{{ ticket.seatType }}</el-tag>
+              <span class="seat-number">{{ ticket.carNumber }}车{{ ticket.seatNumber }}号</span>
+            </div>
+            <div class="ticket-price">{{ formatPrice(ticket.price) }}</div>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 订单信息 -->
+      <el-card class="summary-card" v-if="orderInfo" shadow="hover">
+        <template #header>
+          <div class="card-header">
+            <el-icon><document /></el-icon>
+            <span>订单信息</span>
+          </div>
+        </template>
+
+        <div class="summary-list">
+          <div class="summary-row">
+            <span class="summary-label">订单号</span>
+            <span class="summary-value">{{ orderInfo.orderNo }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">下单时间</span>
+            <span class="summary-value">{{ formatTime(orderInfo.createTime) }}</span>
+          </div>
+          <div class="summary-row">
+            <span class="summary-label">票数</span>
+            <span class="summary-value">{{ tickets.length }} 张</span>
+          </div>
+          <div class="summary-row total-row">
+            <span class="summary-label">订单总额</span>
+            <span class="summary-value total-price">{{ formatPrice(orderInfo.totalAmount) }}</span>
+          </div>
+        </div>
+      </el-card>
+
+      <!-- 操作按钮 -->
+      <div class="action-bar" v-if="orderInfo">
+        <el-button size="large" @click="goBack">返回</el-button>
+        <el-button
+          type="danger"
+          size="large"
+          v-if="orderInfo.status === 'UNPAID'"
+          @click="cancelOrder"
+        >
+          取消订单
+        </el-button>
+        <el-button
+          type="primary"
+          size="large"
+          v-if="orderInfo.status === 'UNPAID'"
+          @click="showPaymentDialog"
+        >
+          立即支付
+        </el-button>
+      </div>
+
+      <!-- 空状态 -->
+      <el-empty
+        v-else-if="!loading"
+        description="订单不存在或已被删除"
+        :image-size="200"
+      >
+        <el-button type="primary" @click="goBack">返回订单列表</el-button>
+      </el-empty>
     </div>
-    
+
     <!-- 支付对话框 -->
     <el-dialog
       v-model="paymentDialog.visible"
       title="订单支付"
-      width="400px"
+      width="450px"
+      :close-on-click-modal="false"
     >
       <div class="payment-container">
         <div class="payment-amount">
-          <p>支付金额</p>
-          <h2>{{ formatPrice(paymentDialog.amount) }}</h2>
+          <div class="amount-label">支付金额</div>
+          <div class="amount-value">{{ formatPrice(paymentDialog.amount) }}</div>
         </div>
         
+        <el-divider />
+
         <div class="payment-method">
-          <h4>支付方式</h4>
-          <div class="payment-options">
-            <div 
-              v-if="paymentDialog.method === 1" 
-              class="payment-qrcode wechat"
-            >
-              <div class="qrcode-container">
-                <img src="/img/wechat-pay-mock.png" alt="微信支付" class="qrcode-placeholder" />
-              </div>
-              <p>请使用微信扫一扫</p>
-            </div>
-            
-            <div 
-              v-else-if="paymentDialog.method === 2" 
-              class="payment-qrcode alipay"
-            >
-              <div class="qrcode-container">
-                <img src="/img/alipay-mock.png" alt="支付宝支付" class="qrcode-placeholder" />
-              </div>
-              <p>请使用支付宝扫一扫</p>
-            </div>
-            
-            <div 
-              v-else class="payment-method-selector"
-            >
-              <el-radio-group v-model="paymentDialog.method">
-                <el-radio :label="1">微信支付</el-radio>
-                <el-radio :label="2">支付宝</el-radio>
-              </el-radio-group>
-              
-              <div style="margin-top: 20px; text-align: center;">
-                <el-button type="primary" @click="paymentDialog.method">选择支付方式</el-button>
-              </div>
-            </div>
-          </div>
+          <div class="method-label">选择支付方式</div>
+          <el-radio-group v-model="paymentDialog.method" class="payment-options">
+            <el-radio :label="1" border size="large">
+              <el-icon><WalletFilled /></el-icon>
+              微信支付
+            </el-radio>
+            <el-radio :label="2" border size="large">
+              <el-icon><CreditCard /></el-icon>
+              支付宝
+            </el-radio>
+          </el-radio-group>
         </div>
-      </div>
-      
-      <div class="payment-progress" v-if="paymentDialog.processing">
-        <el-progress 
-          :percentage="paymentDialog.progress" 
-          :status="paymentDialog.progress >= 100 ? 'success' : ''"
-        />
-        <p>{{ paymentDialog.progressText }}</p>
+
+        <div class="payment-tip" v-if="!paymentDialog.processing">
+          <el-icon color="#faad14"><InfoFilled /></el-icon>
+          <span>这是模拟支付，点击确认后将自动完成支付</span>
+        </div>
+
+        <div class="payment-progress" v-if="paymentDialog.processing">
+          <el-progress
+            :percentage="paymentDialog.progress"
+            :status="paymentDialog.progress >= 100 ? 'success' : ''"
+          />
+          <p class="progress-text">{{ paymentDialog.progressText }}</p>
+        </div>
       </div>
       
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="cancelPayment">取消支付</el-button>
-          <el-button type="primary" @click="simulatePayment" :loading="paymentDialog.processing">确认支付</el-button>
+          <el-button @click="paymentDialog.visible = false" :disabled="paymentDialog.processing">
+            取消
+          </el-button>
+          <el-button
+            type="primary"
+            @click="simulatePayment"
+            :loading="paymentDialog.processing"
+            :disabled="paymentDialog.method === 0"
+          >
+            {{ paymentDialog.processing ? '支付中...' : '确认支付' }}
+          </el-button>
         </span>
       </template>
     </el-dialog>
@@ -161,39 +207,40 @@
 import { ref, onMounted, reactive } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import {
+  SuccessFilled, WarningFilled, CircleClose,
+  Train, User, Document, Right,
+  WalletFilled, CreditCard, InfoFilled
+} from '@element-plus/icons-vue';
 import { orderAPI } from '@/api';
 import dataHelper from '@/utils/dataHelper';
-import { formatStation, formatPrice, formatDuration } from '@/utils/formatters';
+import { formatStation, formatPrice } from '@/utils/formatters';
 
 export default {
   name: 'OrderDetail',
+  components: {
+    SuccessFilled, WarningFilled, CircleClose,
+    Train, User, Document, Right,
+    WalletFilled, CreditCard, InfoFilled
+  },
   setup() {
     const route = useRoute();
     const router = useRouter();
     const orderNo = route.params.orderNo;
     
-    // 调试订单号获取
-    console.log('=== OrderDetail 调试信息 ===');
-    console.log('当前路由:', route.path);
-    console.log('路由参数:', route.params);
-    console.log('获取到的订单号:', orderNo);
-    console.log('订单号类型:', typeof orderNo);
-    
     const loading = ref(false);
     const orderInfo = ref(null);
     const tickets = ref([]);
     
-    // 支付对话框数据
     const paymentDialog = reactive({
       visible: false,
       amount: 0,
-      method: 0, // 0-未选择, 1-微信，2-支付宝
+      method: 0,
       processing: false,
       progress: 0,
       progressText: '正在处理支付...'
     });
     
-    // 获取订单详情
     const fetchOrderDetail = async () => {
       loading.value = true;
       try {
@@ -346,24 +393,52 @@ export default {
       return date.toLocaleString('zh-CN');
     };
     
-    // 从时间中提取日期
     const extractDate = (timeStr) => {
       if (!timeStr) return '';
       const parts = timeStr.split(' ');
       return parts[0] || '';
     };
-    
-    // 从时间中提取时间部分
+
     const extractTime = (timeStr) => {
       if (!timeStr) return '';
       const parts = timeStr.split(' ');
-      return parts.length > 1 ? parts[1] : timeStr;
+      return parts[1]?.substring(0, 5) || timeStr;
     };
-    
+
+    const formatDate = (dateTime) => {
+      if (!dateTime) return '';
+      const date = new Date(dateTime);
+      return date.toLocaleDateString('zh-CN', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit'
+      });
+    };
+
+    const formatIdNumber = (idNumber) => {
+      if (!idNumber) return '';
+      if (idNumber.length <= 8) return idNumber;
+      return idNumber.substring(0, 4) + '**********' + idNumber.substring(idNumber.length - 4);
+    };
+
+    const getStatusIcon = (status) => {
+      const iconMap = {
+        'COMPLETED': SuccessFilled,
+        'UNPAID': WarningFilled,
+        'CANCELED': CircleClose
+      };
+      return iconMap[status] || WarningFilled;
+    };
+
     onMounted(() => {
-      fetchOrderDetail();
+      if (orderNo) {
+        fetchOrderDetail();
+      } else {
+        ElMessage.error('订单号不存在');
+        goBack();
+      }
     });
-    
+
     return {
       loading,
       orderInfo,
@@ -375,12 +450,14 @@ export default {
       simulatePayment,
       cancelPayment,
       getOrderStatusText,
+      getStatusIcon,
       formatTime,
+      formatDate,
       extractDate,
       extractTime,
       formatStation,
       formatPrice,
-      formatDuration
+      formatIdNumber
     };
   }
 }
@@ -388,196 +465,372 @@ export default {
 
 <style scoped>
 .order-detail-container {
-  padding: 20px;
+  max-width: 900px;
+  margin: 0 auto;
 }
 
-.order-info-card {
-  margin-bottom: 20px;
+/* 状态卡片 */
+.status-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+  overflow: hidden;
 }
 
-.order-header {
-  text-align: center;
+.status-banner {
+  padding: 32px;
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
 }
 
-.status-text {
-  font-size: 24px;
-  color: #409EFF;
-  font-weight: bold;
-  margin-bottom: 10px;
+.status-banner.status-completed {
+  background: linear-gradient(135deg, #52c41a 0%, #73d13d 100%);
+}
+
+.status-banner.status-canceled {
+  background: linear-gradient(135deg, #8c8c8c 0%, #bfbfbf 100%);
+}
+
+.status-icon {
+  font-size: 56px;
+}
+
+.status-info {
+  flex: 1;
+}
+
+.status-title {
+  font-size: 28px;
+  font-weight: 600;
+  margin: 0 0 8px 0;
 }
 
 .status-desc {
-  color: #909399;
   font-size: 14px;
+  opacity: 0.9;
+  margin: 0;
 }
 
-.train-info {
+/* 卡片通用样式 */
+.journey-card,
+.tickets-card,
+.summary-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.card-header {
   display: flex;
   align-items: center;
-  justify-content: center;
-  margin: 30px 0;
-}
-
-.train-number {
-  font-size: 18px;
-  font-weight: bold;
-  text-align: center;
-  margin-right: 30px;
-}
-
-.train-route {
-  text-align: center;
-}
-
-.station-time {
-  margin-bottom: 5px;
-}
-
-.time {
-  font-size: 24px;
-  font-weight: bold;
-}
-
-.date {
-  font-size: 14px;
-  color: #909399;
-}
-
-.station-name {
+  gap: 8px;
+  font-weight: 500;
   font-size: 16px;
 }
 
-.route-divider {
-  width: 100px;
-  height: 2px;
-  background-color: #dcdfe6;
-  margin: 0 20px;
-  position: relative;
+.card-header .el-icon {
+  color: #1890ff;
+  font-size: 18px;
 }
 
-.arrow {
-  position: absolute;
-  right: -5px;
-  top: -4px;
-  width: 10px;
-  height: 10px;
-  border-top: 2px solid #dcdfe6;
-  border-right: 2px solid #dcdfe6;
-  transform: rotate(45deg);
+/* 行程信息 */
+.journey-content {
+  padding: 8px 0;
 }
 
-.ticket-list {
-  margin-top: 20px;
-}
-
-.ticket-item {
+.train-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 0;
-  border-bottom: 1px dashed #dcdfe6;
+  margin-bottom: 24px;
 }
 
-.ticket-item:last-child {
-  border-bottom: none;
+.train-number {
+  font-size: 28px;
+  font-weight: 600;
+  color: #1890ff;
 }
 
-.passenger-info {
+.travel-date {
+  font-size: 14px;
+  color: #8c8c8c;
+}
+
+.journey-route {
+  display: flex;
+  align-items: center;
+  gap: 32px;
+}
+
+.journey-point {
+  flex: 1;
+  text-align: center;
+}
+
+.point-time {
+  font-size: 32px;
+  font-weight: 600;
+  color: #262626;
+  margin-bottom: 8px;
+}
+
+.point-station {
+  font-size: 18px;
+  color: #595959;
+}
+
+.journey-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 200px;
+}
+
+.line-circle {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #1890ff;
+}
+
+.line-bar {
+  flex: 1;
+  height: 2px;
+  background: #d9d9d9;
+}
+
+.line-arrow {
+  color: #1890ff;
+  font-size: 24px;
+}
+
+/* 乘客车票列表 */
+.tickets-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.ticket-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  background: #fafafa;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.ticket-row:hover {
+  background: #f0f0f0;
+}
+
+.ticket-index {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: #1890ff;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 600;
+}
+
+.ticket-passenger {
   flex: 1;
 }
 
 .passenger-name {
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-size: 16px;
+  font-weight: 500;
+  color: #262626;
+  margin-bottom: 4px;
 }
 
 .passenger-id {
-  color: #909399;
-  font-size: 14px;
+  font-size: 12px;
+  color: #8c8c8c;
 }
 
-.seat-info {
+.ticket-seat {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  margin: 0 20px;
+  gap: 8px;
+}
+
+.seat-number {
+  font-size: 14px;
+  color: #595959;
 }
 
 .ticket-price {
-  font-size: 18px;
-  font-weight: bold;
-  color: #F56C6C;
+  font-size: 20px;
+  font-weight: 600;
+  color: #ff4d4f;
+  min-width: 100px;
+  text-align: right;
 }
 
-.order-summary {
-  margin-top: 20px;
+/* 订单汇总 */
+.summary-list {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
 }
 
-.summary-item {
-  margin-bottom: 10px;
+.summary-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 12px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-.label {
-  color: #909399;
+.summary-row.total-row {
+  border-bottom: none;
+  padding-top: 16px;
+  border-top: 2px solid #e8e8e8;
 }
 
-.value {
-  margin-left: 10px;
+.summary-label {
+  color: #8c8c8c;
+  font-size: 14px;
 }
 
-.price {
-  font-size: 18px;
-  font-weight: bold;
-  color: #F56C6C;
+.summary-value {
+  color: #262626;
+  font-weight: 500;
 }
 
-.order-actions {
-  margin-top: 30px;
-  text-align: center;
+.total-price {
+  font-size: 28px;
+  font-weight: 600;
+  color: #ff4d4f;
+}
+
+/* 操作按钮 */
+.action-bar {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+  padding: 24px 0;
 }
 
 /* 支付对话框样式 */
 .payment-container {
-  text-align: center;
+  padding: 12px 0;
 }
 
-.payment-amount h2 {
-  color: #F56C6C;
-  font-size: 24px;
+.payment-amount {
+  text-align: center;
+  padding: 24px 0;
+}
+
+.amount-label {
+  font-size: 14px;
+  color: #8c8c8c;
+  margin-bottom: 12px;
+}
+
+.amount-value {
+  font-size: 36px;
+  font-weight: 600;
+  color: #ff4d4f;
 }
 
 .payment-method {
-  margin-top: 20px;
+  margin: 24px 0;
+}
+
+.method-label {
+  font-size: 14px;
+  color: #595959;
+  margin-bottom: 16px;
+  font-weight: 500;
 }
 
 .payment-options {
-  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  width: 100%;
 }
 
-.payment-qrcode {
-  text-align: center;
+.payment-options :deep(.el-radio) {
+  margin-right: 0;
+  width: 100%;
 }
 
-.qrcode-container {
-  margin: 20px auto;
-  width: 200px;
-  height: 200px;
-  background-color: #f2f2f2;
+.payment-options :deep(.el-radio.is-bordered) {
+  padding: 16px 20px;
+  border-radius: 8px;
+  transition: all 0.3s;
+}
+
+.payment-options :deep(.el-radio.is-bordered:hover) {
+  border-color: #1890ff;
+  background-color: #f0f5ff;
+}
+
+.payment-options :deep(.el-radio.is-bordered.is-checked) {
+  border-color: #1890ff;
+  background-color: #e6f7ff;
+}
+
+.payment-options :deep(.el-radio__label) {
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
 }
 
-.qrcode-placeholder {
-  max-width: 100%;
-  max-height: 100%;
+.payment-tip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  background: #fffbe6;
+  border: 1px solid #ffe58f;
+  border-radius: 8px;
+  margin-top: 16px;
+  font-size: 13px;
+  color: #595959;
 }
 
 .payment-progress {
-  margin-top: 20px;
+  margin-top: 24px;
+  text-align: center;
 }
 
-.dialog-footer {
-  text-align: right;
+.progress-text {
+  margin-top: 12px;
+  font-size: 14px;
+  color: #1890ff;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .journey-route {
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .journey-line {
+    transform: rotate(90deg);
+    min-width: 100px;
+  }
+
+  .ticket-row {
+    flex-wrap: wrap;
+  }
+
+  .action-bar {
+    flex-direction: column;
+  }
+
+  .amount-value {
+    font-size: 28px;
+  }
 }
 </style>

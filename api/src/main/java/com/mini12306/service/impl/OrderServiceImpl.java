@@ -35,7 +35,7 @@ public class OrderServiceImpl implements OrderService {
     
     @Autowired
     private TrainRepository trainRepository;
-    
+
     @Autowired
     private PassengerRepository passengerRepository;
     
@@ -156,10 +156,10 @@ public class OrderServiceImpl implements OrderService {
         order.setOrderNo(CodeGenerator.generateOrderNo());
         order.setUserId(userId);
         order.setTotalAmount(train.getPrice().multiply(request.getPassengerIds().size()));
-        order.setStatus("未支付");
+        order.setStatus("UNPAID");  // 使用英文状态标识
         order.setCreateTime(new Date());
-        order.setPayTime(new Date());
-        
+        order.setPayTime(null);  // 未支付时 payTime 应该为 null
+
         orderRepository.save(order);
         
         // 创建车票
@@ -203,17 +203,16 @@ public class OrderServiceImpl implements OrderService {
                 // 如果列车没有提供时长，则设置一个默认值
                 ticket.setDuration(120); // 默认2小时
             }
-            ticket.setStatus(0); // 使用1表示正常状态
+            ticket.setStatus(1); // 1表示正常状态，0表示已取消
             ticket.setCreateTime(new Date());
             ticket.setUpdateTime(new Date());
             
             ticketRepository.save(ticket);
         }
         
-        // 更新列车余票
-        train.setSeatCount(train.getSeatCount() - request.getPassengerIds().size());
-        trainRepository.save(train);
-        
+        // 注意：创建订单时不扣减余票，等支付时再扣减
+        // 这样可以避免恶意用户批量下单占用余票
+
         // 设置订单包含的票数
         order.setTicketCount(request.getPassengerIds().size());
         
@@ -307,11 +306,14 @@ public class OrderServiceImpl implements OrderService {
         }
         
         // 验证订单状态
-        if ("已取消".equals(order.getStatus())) {
+        if ("CANCELED".equals(order.getStatus())) {
             return Result.fail("订单已取消");
         }
         
         // 查询订单的所有票
+        // 记录订单原状态，用于判断是否需要恢复余票
+        String originalStatus = order.getStatus();
+
         List<Ticket> tickets = ticketRepository.findByOrderId(order.getId());
         
         // 验证票状态
@@ -322,27 +324,33 @@ public class OrderServiceImpl implements OrderService {
         }
         
         // 取消订单
-        order.setStatus("已取消");
+        order.setStatus("CANCELED");  // 使用英文状态标识
         order.setCancelTime(new Date());
         orderRepository.save(order);
         
         // 获取第一张票的信息（用于后续填充 OrderDTO）
         Ticket firstTicket = tickets.isEmpty() ? null : tickets.get(0);
         
-        // 取消票
+        // 取消票并恢复余票
         for (Ticket ticket : tickets) {
             // 只取消状态为正常的票
             if (ticket.getStatus() == 1) {  
                 ticket.setStatus(0); // 使用0表示已取消状态
                 ticket.setUpdateTime(new Date());
                 ticketRepository.save(ticket);
-                
-                // 恢复列车余票
-                Optional<Train> trainOpt = trainRepository.findById(ticket.getTrainId());
-                if (trainOpt.isPresent()) {
-                    Train train = trainOpt.get();
-                    train.setSeatCount(train.getSeatCount() + 1);
-                    trainRepository.save(train);
+
+                // 只有已支付的订单才恢复列车余票（未支付的订单没有扣票）
+                if ("PAID".equals(originalStatus)) {
+                    Optional<Train> trainOpt = trainRepository.findById(ticket.getTrainId());
+                    if (trainOpt.isPresent()) {
+                        Train train = trainOpt.get();
+                        train.setSeatCount(train.getSeatCount() + 1);
+                        trainRepository.save(train);
+
+                        System.out.println("=== 取消已支付订单，恢复余票 ===");
+                        System.out.println("列车ID: " + ticket.getTrainId());
+                        System.out.println("恢复后余票: " + train.getSeatCount());
+                    }
                 }
             }
         }
@@ -445,17 +453,56 @@ public class OrderServiceImpl implements OrderService {
         }
         
         // 验证订单状态
-        if (!"未支付".equals(order.getStatus())) {
+        if (!"UNPAID".equals(order.getStatus())) {
             return Result.fail("订单状态错误，无法支付");
         }
         
-        // 更新订单状态为已支付
-        order.setStatus("已支付");
+        // 查询订单的票信息
+        List<Ticket> tickets = ticketRepository.findByOrderId(order.getId());
+
+        if (tickets.isEmpty()) {
+            return Result.fail("订单中没有车票");
+        }
+
+        // 获取列车信息用于扣减余票
+        Ticket firstTicket = tickets.get(0);
+        Long trainId = firstTicket.getTrainId();
+        int ticketCount = tickets.size();
+
+        // 查询列车信息
+        Optional<Train> trainOpt = trainRepository.findById(trainId);
+        if (!trainOpt.isPresent()) {
+            return Result.fail("列车不存在");
+        }
+
+        Train train = trainOpt.get();
+
+        // 检查余票是否足够
+        if (train.getSeatCount() < ticketCount) {
+            return Result.fail("余票不足（剩余" + train.getSeatCount() + "张）");
+        }
+
+        // 扣减列车余票
+        train.setSeatCount(train.getSeatCount() - ticketCount);
+        trainRepository.save(train);
+
+        // 余票扣减成功后，才更新订单状态为已支付
+        order.setStatus("PAID");
         order.setPayTime(new Date());
         orderRepository.save(order);
-        
-        // 查询订单的票信息并更新
-        List<Ticket> tickets = ticketRepository.findByOrderId(order.getId());
+
+        // 更新所有车票状态为正常（1）
+        for (Ticket ticket : tickets) {
+            ticket.setStatus(1); // 1表示正常状态
+            ticket.setUpdateTime(new Date());
+            ticketRepository.save(ticket);
+        }
+
+        System.out.println("=== 支付成功，扣减余票 ===");
+        System.out.println("列车ID: " + trainId);
+        System.out.println("扣减票数: " + ticketCount);
+        System.out.println("剩余票数: " + train.getSeatCount());
+
         order.setTicketCount(tickets.size());
         
         // 创建扩展的OrderDTO对象
@@ -463,13 +510,13 @@ public class OrderServiceImpl implements OrderService {
         
         // 如果有票，从第一张票获取车次和站点信息
         if (!tickets.isEmpty()) {
-            Ticket firstTicket = tickets.get(0);
-            orderDTO.setTrainNumber(firstTicket.getTrainCode());
-            orderDTO.setTrainType(firstTicket.getTrainType());
-            orderDTO.setStartStation(firstTicket.getStartStation());
-            orderDTO.setEndStation(firstTicket.getEndStation());
-            orderDTO.setDepartureTime(firstTicket.getStartTime());
-            orderDTO.setArrivalTime(firstTicket.getEndTime());
+            Ticket ticketInfo = tickets.get(0);
+            orderDTO.setTrainNumber(ticketInfo.getTrainCode());
+            orderDTO.setTrainType(ticketInfo.getTrainType());
+            orderDTO.setStartStation(ticketInfo.getStartStation());
+            orderDTO.setEndStation(ticketInfo.getEndStation());
+            orderDTO.setDepartureTime(ticketInfo.getStartTime());
+            orderDTO.setArrivalTime(ticketInfo.getEndTime());
         }
         
         return Result.success("支付成功", (Order)orderDTO);

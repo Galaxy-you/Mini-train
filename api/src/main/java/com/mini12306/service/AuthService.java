@@ -30,4 +30,9 @@ public interface AuthService {
      * 查询用户信息
      */
     Result<Account> getUserInfo(Long userId);
+
+    /**
+     * 获取用户统计数据
+     */
+    Result<?> getUserStats(Long userId);
 }

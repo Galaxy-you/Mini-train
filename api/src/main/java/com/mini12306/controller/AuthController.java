@@ -53,4 +53,13 @@ public class AuthController {
         Long userId = (Long) request.getAttribute("userId");
         return authService.getUserInfo(userId);
     }
+
+    /**
+     * 获取用户统计数据
+     */
+    @GetMapping("/stats")
+    public Result<?> getUserStats(HttpServletRequest request) {
+        Long userId = (Long) request.getAttribute("userId");
+        return authService.getUserStats(userId);
+    }
 }

@@ -49,6 +49,10 @@ public class TicketServiceImpl implements TicketService {
     @Autowired
     private StationRepository stationRepository;
     
+
+    @Autowired
+    private OrderRepository orderRepository;
+
     @Override
     public Result<List<TicketDetailDTO>> listUserBoughtTickets(Long userId) {
         // 使用优化的查询方法直接获取DTO列表
@@ -101,7 +105,8 @@ public class TicketServiceImpl implements TicketService {
         if (ticket.getStatus() != 1) {
             return Result.fail("车票已改签或退票");
         }
-         // 取消票
+
+        // 取消票
         ticket.setStatus(0); // 设置为已取消状态
         ticket.setUpdateTime(new Date());
         ticketRepository.save(ticket);
@@ -231,13 +236,8 @@ public class TicketServiceImpl implements TicketService {
     
     /**
      * 更新订单信息，当票被取消时
-     * @param orderId 订单ID
      */
-    @Autowired
-    private OrderRepository orderRepository;
-    
-    @Transactional
-    private void updateOrderAfterCancelTicket(Long orderId) {
+    protected void updateOrderAfterCancelTicket(Long orderId) {
         // 查询订单
         Optional<Order> orderOpt = orderRepository.findById(orderId);
         if (!orderOpt.isPresent()) {

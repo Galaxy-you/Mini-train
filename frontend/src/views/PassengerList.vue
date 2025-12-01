@@ -1,33 +1,81 @@
 <template>
-  <div class="passenger-list-container page-container">
-    <h2 class="page-title">乘车人管理</h2>
-    
-    <div class="action-bar">
-      <el-button type="primary" @click="addPassenger">添加乘车人</el-button>
+  <div class="passenger-list-container">
+    <!-- 页面标题 -->
+    <div class="page-header">
+      <h2>乘车人管理</h2>
+      <el-button type="primary" @click="addPassenger">
+        <el-icon><plus /></el-icon>
+        添加乘车人
+      </el-button>
     </div>
-    
-    <el-card v-loading="loading">
-      <el-table :data="passengers" style="width: 100%">
-        <el-table-column prop="realName" label="姓名" />
-        <el-table-column prop="idType" label="证件类型">
-          <template #default="scope">
-            {{ getIdTypeName(scope.row.idType) }}
-          </template>
-        </el-table-column>
-        <el-table-column prop="idNumber" label="证件号码" />
-        <el-table-column prop="phone" label="联系电话" />
-        <el-table-column label="操作" width="200">
-          <template #default="scope">
-            <el-button @click="editPassenger(scope.row)" size="small" type="primary">编辑</el-button>
-            <el-button @click="confirmDeletePassenger(scope.row)" size="small" type="danger">删除</el-button>
-          </template>
-        </el-table-column>
-      </el-table>
-      
-      <div v-if="passengers.length === 0 && !loading" class="empty-tip">
-        暂无乘车人，请点击添加乘车人按钮添加
+
+    <!-- 乘车人列表 -->
+    <div class="passenger-list" v-loading="loading">
+      <div
+        class="passenger-card"
+        v-for="passenger in passengers"
+        :key="passenger.id"
+      >
+        <div class="passenger-avatar">
+          <el-avatar :size="56" class="avatar">
+            {{ passenger.realName ? passenger.realName.charAt(0) : 'U' }}
+          </el-avatar>
+        </div>
+
+        <div class="passenger-info">
+          <div class="info-row name-row">
+            <span class="passenger-name">{{ passenger.realName }}</span>
+            <el-tag v-if="passenger.isDefault" type="success" size="small">常用</el-tag>
+          </div>
+
+          <div class="info-row">
+            <div class="info-item">
+              <el-icon class="info-icon"><postcard /></el-icon>
+              <span class="info-label">{{ getIdTypeName(passenger.idType) }}</span>
+              <span class="info-value">{{ passenger.idNumber }}</span>
+            </div>
+          </div>
+
+          <div class="info-row">
+            <div class="info-item">
+              <el-icon class="info-icon"><phone /></el-icon>
+              <span class="info-label">联系电话</span>
+              <span class="info-value">{{ passenger.phone || '未填写' }}</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="passenger-actions">
+          <el-button type="primary" size="small" @click="editPassenger(passenger)">
+            <el-icon><edit /></el-icon>
+            编辑
+          </el-button>
+          <el-button type="danger" size="small" @click="confirmDeletePassenger(passenger)">
+            <el-icon><delete /></el-icon>
+            删除
+          </el-button>
+        </div>
       </div>
-    </el-card>
+
+      <!-- 空状态 -->
+      <el-empty
+        v-if="passengers.length === 0 && !loading"
+        description="暂无乘车人信息"
+        :image-size="200"
+      >
+        <el-button type="primary" @click="addPassenger">添加乘车人</el-button>
+      </el-empty>
+    </div>
+
+    <!-- 浮动添加按钮（移动端） -->
+    <el-button
+      type="primary"
+      circle
+      class="fab-button"
+      @click="addPassenger"
+    >
+      <el-icon><plus /></el-icon>
+    </el-button>
   </div>
 </template>
 
@@ -35,28 +83,32 @@
 import { ref, onMounted } from 'vue';
 import { useRouter, useRoute } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
+import { Plus, Postcard, Phone, Edit, Delete } from '@element-plus/icons-vue';
 import { passengerAPI } from '@/api';
 import dataHelper from '@/utils/dataHelper';
 
 export default {
   name: 'PassengerList',
+  components: {
+    Plus,
+    Postcard,
+    Phone,
+    Edit,
+    Delete
+  },
   setup() {
     const router = useRouter();
     const route = useRoute();
     const passengers = ref([]);
     const loading = ref(false);
     
-    // 获取乘车人列表
     const fetchPassengers = async () => {
       loading.value = true;
       try {
         const response = await passengerAPI.listPassengers();
-        console.log('获取到的乘车人列表响应:', response);
         const extractedData = dataHelper.extractApiData(response);
-        // 使用适配器处理乘车人数据，确保idType和idNumber字段正确
         const passengerArray = dataHelper.ensureArray(extractedData);
         passengers.value = passengerArray.map(p => dataHelper.adaptPassengerData(p));
-        console.log('处理后的乘车人数据:', passengers.value);
       } catch (error) {
         console.error('获取乘车人列表失败:', error);
         ElMessage.error('获取乘车人列表失败');
@@ -65,23 +117,20 @@ export default {
       }
     };
     
-    // 添加乘车人
     const addPassenger = () => {
       router.push({
         path: '/passenger/edit',
-        query: route.query // 保留重定向参数
+        query: route.query
       });
     };
     
-    // 编辑乘车人
     const editPassenger = (passenger) => {
       router.push({
         path: `/passenger/edit/${passenger.id}`,
-        query: route.query // 保留重定向参数
+        query: route.query
       });
     };
-    
-    // 确认删除乘车人
+
     const confirmDeletePassenger = (passenger) => {
       ElMessageBox.confirm(`确定要删除乘车人"${passenger.realName}"吗?`, '提示', {
         confirmButtonText: '确定',
@@ -92,19 +141,17 @@ export default {
       }).catch(() => {});
     };
     
-    // 删除乘车人
     const deletePassenger = async (id) => {
       try {
         await passengerAPI.deletePassenger(id);
         ElMessage.success('删除成功');
-        fetchPassengers(); // 刷新列表
+        fetchPassengers();
       } catch (error) {
         console.error('删除乘车人失败:', error);
         ElMessage.error('删除乘车人失败');
       }
     };
     
-    // 获取证件类型名称
     const getIdTypeName = (idType) => {
       const idTypeMap = {
         '1': '身份证',
@@ -133,16 +180,149 @@ export default {
 
 <style scoped>
 .passenger-list-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* 页面头部 */
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 24px;
+}
+
+.page-header h2 {
+  font-size: 24px;
+  font-weight: 600;
+  color: #262626;
+  margin: 0;
+}
+
+/* 乘车人列表 */
+.passenger-list {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+  gap: 16px;
+}
+
+/* 乘车人卡片 */
+.passenger-card {
+  background: #fff;
+  border-radius: 12px;
   padding: 20px;
+  display: flex;
+  gap: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s;
 }
 
-.action-bar {
-  margin-bottom: 20px;
+.passenger-card:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
 }
 
-.empty-tip {
-  padding: 30px 0;
-  text-align: center;
-  color: #909399;
+.passenger-avatar {
+  flex: 0 0 auto;
+}
+
+.avatar {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: #fff;
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.passenger-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.info-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.name-row {
+  margin-bottom: 4px;
+}
+
+.passenger-name {
+  font-size: 18px;
+  font-weight: 600;
+  color: #262626;
+}
+
+.info-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 14px;
+  color: #595959;
+}
+
+.info-icon {
+  color: #1890ff;
+  font-size: 16px;
+}
+
+.info-label {
+  color: #8c8c8c;
+}
+
+.info-value {
+  color: #262626;
+}
+
+.passenger-actions {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  justify-content: center;
+}
+
+/* 浮动按钮 */
+.fab-button {
+  position: fixed;
+  right: 32px;
+  bottom: 32px;
+  width: 56px;
+  height: 56px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 1000;
+  display: none;
+}
+
+/* 响应式 */
+@media (max-width: 768px) {
+  .passenger-list {
+    grid-template-columns: 1fr;
+  }
+
+  .passenger-card {
+    flex-direction: column;
+  }
+
+  .passenger-actions {
+    flex-direction: row;
+  }
+
+  .page-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 16px;
+  }
+
+  .fab-button {
+    display: flex;
+  }
+
+  .page-header .el-button {
+    display: none;
+  }
 }
 </style>

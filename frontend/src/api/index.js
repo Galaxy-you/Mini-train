@@ -31,6 +31,13 @@ export const authAPI = {
       url: '/auth/userinfo',
       method: 'get'
     });
+  },
+  // 获取用户统计数据
+  getUserStats() {
+    return request({
+      url: '/auth/stats',
+      method: 'get'
+    });
   }
 };
 

@@ -18,6 +18,11 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByUserId(Long userId);
 
     /**
+     * 统计用户订单数量
+     */
+    long countByUserId(Long userId);
+
+    /**
      * 按订单号查询
      */
     Optional<Order> findByOrderNo(String orderNo);
