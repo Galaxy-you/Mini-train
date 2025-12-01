@@ -177,6 +177,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { adminAPI } from '@/api'
+import { dataHelper } from '@/utils/dataHelper'
 
 export default {
   name: 'RouteManage',
@@ -252,30 +253,32 @@ export default {
     // 获取所有车站选项
     const fetchStationOptions = async () => {
       try {
-        const params = { size: 1000 } // 获取所有车站
+        const params = { page: 0, size: 1000 } // 获取所有车站
         const result = await adminAPI.station.list(params)
-        stationOptions.value = result.content || []
+        const processedData = dataHelper.handlePaginationData(result)
+        stationOptions.value = processedData.content || []
       } catch (error) {
+        console.error('获取车站数据失败:', error)
         ElMessage.error('获取车站数据失败')
       }
     }
     
-    // 获取线路列表
+    // 获取列车路线列表（train_route表）
     const fetchRouteList = async () => {
       loading.value = true
       try {
         const params = {
           page: pagination.currentPage - 1, // 后端从0开始计数
           size: pagination.pageSize,
-          startStation: searchForm.startStation || null,
-          endStation: searchForm.endStation || null
+          trainId: searchForm.trainId || null,
+          stationId: searchForm.stationId || null
         }
         
-        const result = await adminAPI.route.list(params)
-        routeList.value = result.content || []
-        pagination.total = result.totalElements || 0
+        const result = await adminAPI.trainRoute.list(params)
+        routeList.value = result.data?.content || []
+        pagination.total = result.data?.totalElements || 0
       } catch (error) {
-        ElMessage.error(error.message || '获取线路列表失败')
+        ElMessage.error(error.message || '获取列车路线列表失败')
       } finally {
         loading.value = false
       }
@@ -337,64 +340,53 @@ export default {
       routeDialog.visible = true
     }
     
-    // 打开编辑线路对话框
+    // 打开编辑列车路线对话框
     const handleEditRoute = async (row) => {
       routeDialog.isEdit = true
       try {
-        const routeData = await adminAPI.route.get(row.id)
-        
+        const routeData = await adminAPI.trainRoute.get(row.id)
+
         // 填充表单
-        routeForm.id = routeData.id
-        routeForm.name = routeData.name
-        routeForm.startStationId = routeData.startStationId
-        routeForm.endStationId = routeData.endStationId
-        routeForm.distance = routeData.distance
-        routeForm.stations = routeData.stations || []
-        
+        routeForm.id = routeData.data.id
+        routeForm.trainId = routeData.data.trainId
+        routeForm.stationId = routeData.data.stationId
+        routeForm.stationOrder = routeData.data.stationOrder
+        routeForm.arriveTime = routeData.data.arriveTime
+        routeForm.departTime = routeData.data.departTime
+        routeForm.stopTime = routeData.data.stopTime
+        routeForm.distance = routeData.data.distance
+
         routeDialog.visible = true
       } catch (error) {
-        ElMessage.error('获取线路详情失败')
+        ElMessage.error('获取路线详情失败')
       }
     }
     
-    // 查看线路详情
+    // 查看列车路线详情
     const handleViewRoute = async (row) => {
       try {
-        const detail = await adminAPI.route.get(row.id)
-        routeDetail.value = detail
+        const detail = await adminAPI.trainRoute.get(row.id)
+        routeDetail.value = detail.data
         routeDetailDialog.visible = true
       } catch (error) {
-        ElMessage.error('获取线路详情失败')
+        ElMessage.error('获取路线详情失败')
       }
     }
     
-    // 提交线路表单
+    // 提交列车路线表单
     const submitRouteForm = () => {
       routeFormRef.value.validate(async (valid) => {
         if (valid) {
-          // 检查途经站点
-          if (routeForm.stations.length === 0) {
-            ElMessage.warning('请添加至少一个途经站点')
-            return
-          }
-          
-          for (const station of routeForm.stations) {
-            if (!station.stationId) {
-              ElMessage.warning('请为每个途经站点选择站点')
-              return
-            }
-          }
-          
           routeDialog.loading = true
           try {
             if (routeDialog.isEdit) {
-              // 编辑线路
-              await adminAPI.route.update(routeForm.id, routeForm)
-              ElMessage.success('线路更新成功')
+              // 编辑路线
+              await adminAPI.trainRoute.update(routeForm.id, routeForm)
+              ElMessage.success('路线更新成功')
             } else {
-              // 添加线路
-              await adminAPI.route.add(routeForm)
-              ElMessage.success('线路添加成功')
+              // 添加路线
+              await adminAPI.trainRoute.add(routeForm)
+              ElMessage.success('路线添加成功')
             }
             routeDialog.visible = false
             fetchRouteList() // 刷新列表
@@ -407,10 +399,10 @@ export default {
       })
     }
     
-    // 删除线路
+    // 删除列车路线
     const handleDeleteRoute = (row) => {
       ElMessageBox.confirm(
-        `确定要删除线路"${row.name}"吗？`,
+        `确定要删除该路线吗？`,
         '警告',
         {
           confirmButtonText: '确定',
@@ -419,8 +411,8 @@ export default {
         }
       ).then(async () => {
         try {
-          await adminAPI.route.delete(row.id)
-          ElMessage.success('线路删除成功')
+          await adminAPI.trainRoute.delete(row.id)
+          ElMessage.success('路线删除成功')
           fetchRouteList() // 刷新列表
         } catch (error) {
           ElMessage.error(error.message || '删除失败')

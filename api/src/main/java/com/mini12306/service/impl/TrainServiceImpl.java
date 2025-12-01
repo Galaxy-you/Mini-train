@@ -73,16 +73,16 @@ public class TrainServiceImpl implements TrainService {
     }
     
     @Override
-    public Result<?> listStations(String province, String city, PageRequest pageRequest) {
+    public Result<?> listStations(String name, String city, PageRequest pageRequest) {
         Specification<Station> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             
-            if (StringUtils.hasText(province)) {
-                predicates.add(cb.equal(root.get("province"), province));
+            if (StringUtils.hasText(name)) {
+                predicates.add(cb.like(root.get("name"), "%" + name + "%"));
             }
             
             if (StringUtils.hasText(city)) {
-                predicates.add(cb.equal(root.get("city"), city));
+                predicates.add(cb.like(root.get("city"), "%" + city + "%"));
             }
             
             return cb.and(predicates.toArray(new Predicate[0]));
@@ -186,18 +186,18 @@ public class TrainServiceImpl implements TrainService {
     }
 
     @Override
-    public Result<?> listTrains(String type, String code, PageRequest pageRequest) {
+    public Result<?> listTrains(String code, String type, PageRequest pageRequest) {
         Specification<Train> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
-            if (StringUtils.hasText(type)) {
-                predicates.add(cb.equal(root.get("type"), type));
-            }
             
             if (StringUtils.hasText(code)) {
                 predicates.add(cb.like(root.get("code"), "%" + code + "%"));
             }
             
+            if (StringUtils.hasText(type)) {
+                predicates.add(cb.equal(root.get("type"), type));
+            }
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
         

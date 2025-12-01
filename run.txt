@@ -1,0 +1,10 @@
+// 运行后端API
+运行SpringBoot的主类：api/src/main/java/com.mini12306/Mini12306ApiApplication
+
+// 运行客户端前端
+cd frontend
+npm run serve
+
+// 运行管理前端
+cd admin
+npm run serve

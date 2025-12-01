@@ -39,6 +39,12 @@ public class AdminController {
     @Autowired
     private StatsService statsService;
     
+    @Autowired
+    private TrainRouteService trainRouteService;
+
+    @Autowired
+    private TrainScheduleService trainScheduleService;
+
     /**
      * 管理员登录
      */
@@ -174,226 +180,132 @@ public class AdminController {
     }
     
     /**
-     * 线路管理 - 获取线路列表
+     * 列车路线管理 - 获取列车路线列表（对应train_route表）
      */
-    @GetMapping("/route")
-    public Result<?> listRoutes(
+    @GetMapping("/train-route")
+    public Result<?> listTrainRoutes(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String startStation,
-            @RequestParam(required = false) String endStation) {
-        // 应该调用服务层方法获取数据，这里使用模拟数据
-        Map<String, Object> result = new HashMap<>();
-        List<Map<String, Object>> content = new ArrayList<>();
-        
-        // 模拟分页数据
-        int start = page * size;
-        int total = 50;
-        int count = Math.min(size, total - start);
-        
-        if (start < total) {
-            for (int i = 0; i < count; i++) {
-                Map<String, Object> route = new HashMap<>();
-                route.put("id", start + i + 1);
-                route.put("name", "线路" + (start + i + 1));
-                route.put("startStation", "北京");
-                route.put("endStation", "上海");
-                route.put("distance", 1300);
-                route.put("stationCount", 4);
-                route.put("createTime", "2025-01-01 00:00:00");
-                route.put("updateTime", "2025-01-01 00:00:00");
-                content.add(route);
-            }
-        }
-        
-        result.put("content", content);
-        result.put("totalElements", total);
-        result.put("totalPages", (total + size - 1) / size);
-        result.put("size", size);
-        result.put("number", page);
-        
-        return Result.success("获取线路列表成功", result);
+            @RequestParam(required = false) Long trainId,
+            @RequestParam(required = false) Long stationId) {
+        return trainRouteService.listTrainRoutes(trainId, stationId,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.ASC, "stationOrder")));
+    }
+
+    /**
+     * 列车路线管理 - 根据列车ID获取完整路线
+     */
+    @GetMapping("/train-route/train/{trainId}")
+    public Result<?> getTrainRoutesByTrainId(@PathVariable Long trainId) {
+        return trainRouteService.getTrainRoutesByTrainId(trainId);
     }
     
     /**
-     * 线路管理 - 获取线路详情
+     * 列车路线管理 - 获取路线详情
      */
-    @GetMapping("/route/{id}")
-    public Result<?> getRouteDetail(@PathVariable Long id) {
-        // 这里应该调用服务层方法获取线路详情
-        Map<String, Object> route = new HashMap<>();
-        route.put("id", id);
-        route.put("name", "北京-上海");
-        route.put("startStation", "北京");
-        route.put("endStation", "上海");
-        route.put("startStationId", 1);
-        route.put("endStationId", 4);
-        route.put("distance", 1300);
-        route.put("stationCount", 4);
-        
-        // 经过的站点
-        List<Map<String, Object>> stations = new ArrayList<>();
-        stations.add(createRouteStation(1, 1, "北京", 0));
-        stations.add(createRouteStation(2, 2, "济南", 400));
-        stations.add(createRouteStation(3, 3, "南京", 900));
-        stations.add(createRouteStation(4, 4, "上海", 1300));
-        
-        route.put("stations", stations);
-        
-        return Result.success("获取线路详情成功", route);
-    }
-    
-    private Map<String, Object> createRouteStation(int order, long stationId, String stationName, int distance) {
-        Map<String, Object> station = new HashMap<>();
-        station.put("order", order);
-        station.put("stationId", stationId);
-        station.put("stationName", stationName);
-        station.put("distance", distance);
-        return station;
+    @GetMapping("/train-route/{id}")
+    public Result<?> getTrainRouteDetail(@PathVariable Long id) {
+        return trainRouteService.getTrainRouteDetail(id);
     }
     
     /**
-     * 线路管理 - 添加线路
+     * 列车路线管理 - 添加列车路线
      */
-    @PostMapping("/route")
-    public Result<?> addRoute(@RequestBody Map<String, Object> route) {
-        // 这里应该调用服务层方法保存数据
-        route.put("id", System.currentTimeMillis());
-        route.put("createTime", new Date());
-        route.put("updateTime", new Date());
-        return Result.success("添加线路成功", route);
+    @PostMapping("/train-route")
+    public Result<?> addTrainRoute(@RequestBody Map<String, Object> route) {
+        return trainRouteService.addTrainRoute(route);
     }
     
     /**
-     * 线路管理 - 更新线路
+     * 列车路线管理 - 批量添加列车路线
      */
-    @PutMapping("/route/{id}")
-    public Result<?> updateRoute(@PathVariable Long id, @RequestBody Map<String, Object> route) {
-        // 更新线路信息
-        route.put("id", id);
-        route.put("updateTime", new Date());
-        return Result.success("更新线路成功", route);
+    @PostMapping("/train-route/batch")
+    public Result<?> batchAddTrainRoutes(@RequestBody Map<String, Object> data) {
+        Long trainId = Long.valueOf(data.get("trainId").toString());
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> routes = (List<Map<String, Object>>) data.get("routes");
+        return trainRouteService.batchAddTrainRoutes(trainId, routes);
     }
     
     /**
-     * 线路管理 - 删除线路
+     * 列车路线管理 - 更新列车路线
      */
-    @DeleteMapping("/route/{id}")
-    public Result<?> deleteRoute(@PathVariable Long id) {
-        // 删除线路
-        return Result.success("删除线路成功");
+    @PutMapping("/train-route/{id}")
+    public Result<?> updateTrainRoute(@PathVariable Long id, @RequestBody Map<String, Object> route) {
+        return trainRouteService.updateTrainRoute(id, route);
     }
     
     /**
-     * 时刻表管理 - 获取时刻表列表
+     * 列车路线管理 - 删除列车路线
      */
-    @GetMapping("/schedule")
-    public Result<?> listSchedules(
+    @DeleteMapping("/train-route/{id}")
+    public Result<?> deleteTrainRoute(@PathVariable Long id) {
+        return trainRouteService.deleteTrainRoute(id);
+    }
+    
+    /**
+     * 车次日程管理 - 获取车次日程列表（对应train_schedule表）
+     */
+    @GetMapping("/train-schedule")
+    public Result<?> listTrainSchedules(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @RequestParam(required = false) String trainNo,
-            @RequestParam(required = false) String date) {
-        // 应该调用服务层方法获取数据，这里使用模拟数据
-        Map<String, Object> result = new HashMap<>();
-        List<Map<String, Object>> content = new ArrayList<>();
-        
-        // 模拟分页数据
-        int start = page * size;
-        int total = 200;
-        int count = Math.min(size, total - start);
-        
-        if (start < total) {
-            for (int i = 0; i < count; i++) {
-                Map<String, Object> schedule = new HashMap<>();
-                schedule.put("id", start + i + 1);
-                schedule.put("trainNo", "G" + (1000 + (start + i) % 20));
-                schedule.put("date", "2025-06-" + String.format("%02d", ((start + i) % 30) + 1));
-                schedule.put("startStation", "北京");
-                schedule.put("endStation", "上海");
-                schedule.put("startTime", "08:00");
-                schedule.put("endTime", "14:00");
-                schedule.put("duration", "6小时");
-                schedule.put("status", (start + i) % 5 == 0 ? "已取消" : "正常");
-                schedule.put("createTime", "2025-01-01 00:00:00");
-                content.add(schedule);
-            }
-        }
-        
-        result.put("content", content);
-        result.put("totalElements", total);
-        result.put("totalPages", (total + size - 1) / size);
-        result.put("size", size);
-        result.put("number", page);
-        
-        return Result.success("获取时刻表列表成功", result);
+            @RequestParam(required = false) Long trainId,
+            @RequestParam(required = false) String travelDate,
+            @RequestParam(required = false) Integer status) {
+        return trainScheduleService.listTrainSchedules(trainId, travelDate, status,
+            PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "travelDate")));
+    }
+
+    /**
+     * 车次日程管理 - 根据列车ID获取所有日程
+     */
+    @GetMapping("/train-schedule/train/{trainId}")
+    public Result<?> getTrainSchedulesByTrainId(@PathVariable Long trainId) {
+        return trainScheduleService.getTrainSchedulesByTrainId(trainId);
     }
     
     /**
-     * 时刻表管理 - 获取时刻表详情
+     * 车次日程管理 - 获取日程详情
      */
-    @GetMapping("/schedule/{id}")
-    public Result<?> getScheduleDetail(@PathVariable Long id) {
-        // 这里应该调用服务层方法获取时刻表详情
-        Map<String, Object> schedule = new HashMap<>();
-        schedule.put("id", id);
-        schedule.put("trainId", 1);
-        schedule.put("trainNo", "G1234");
-        schedule.put("date", "2025-06-01");
-        schedule.put("startStation", "北京");
-        schedule.put("endStation", "上海");
-        schedule.put("startTime", "08:00");
-        schedule.put("endTime", "14:00");
-        schedule.put("duration", "6小时");
-        schedule.put("status", "正常");
-        
-        // 席位信息
-        List<Map<String, Object>> seats = new ArrayList<>();
-        seats.add(createSeatInfo("商务座", 3000, 100));
-        seats.add(createSeatInfo("一等座", 1500, 200));
-        seats.add(createSeatInfo("二等座", 900, 500));
-        
-        schedule.put("seats", seats);
-        
-        return Result.success("获取时刻表详情成功", schedule);
-    }
-    
-    private Map<String, Object> createSeatInfo(String type, double price, int count) {
-        Map<String, Object> seat = new HashMap<>();
-        seat.put("type", type);
-        seat.put("price", price);
-        seat.put("count", count);
-        return seat;
+    @GetMapping("/train-schedule/{id}")
+    public Result<?> getTrainScheduleDetail(@PathVariable Long id) {
+        return trainScheduleService.getTrainScheduleDetail(id);
     }
     
     /**
-     * 时刻表管理 - 添加时刻表
+     * 车次日程管理 - 添加车次日程
      */
-    @PostMapping("/schedule")
-    public Result<?> addSchedule(@RequestBody Map<String, Object> schedule) {
-        // 这里应该调用服务层方法保存数据
-        schedule.put("id", System.currentTimeMillis());
-        schedule.put("createTime", new Date());
-        return Result.success("添加时刻表成功", schedule);
+    @PostMapping("/train-schedule")
+    public Result<?> addTrainSchedule(@RequestBody Map<String, Object> schedule) {
+        return trainScheduleService.addTrainSchedule(schedule);
     }
     
     /**
-     * 时刻表管理 - 更新时刻表
+     * 车次日程管理 - 批量添加车次日程
      */
-    @PutMapping("/schedule/{id}")
-    public Result<?> updateSchedule(@PathVariable Long id, @RequestBody Map<String, Object> schedule) {
-        // 更新时刻表信息
-        schedule.put("id", id);
-        schedule.put("updateTime", new Date());
-        return Result.success("更新时刻表成功", schedule);
+    @PostMapping("/train-schedule/batch")
+    public Result<?> batchAddTrainSchedules(@RequestBody Map<String, Object> data) {
+        Long trainId = Long.valueOf(data.get("trainId").toString());
+        @SuppressWarnings("unchecked")
+        List<String> travelDates = (List<String>) data.get("travelDates");
+        return trainScheduleService.batchAddTrainSchedules(trainId, travelDates);
     }
     
     /**
-     * 时刻表管理 - 删除时刻表
+     * 车次日程管理 - 更新车次日程
      */
-    @DeleteMapping("/schedule/{id}")
-    public Result<?> deleteSchedule(@PathVariable Long id) {
-        // 删除时刻表
-        return Result.success("删除时刻表成功");
+    @PutMapping("/train-schedule/{id}")
+    public Result<?> updateTrainSchedule(@PathVariable Long id, @RequestBody Map<String, Object> schedule) {
+        return trainScheduleService.updateTrainSchedule(id, schedule);
+    }
+    
+    /**
+     * 车次日程管理 - 删除车次日程
+     */
+    @DeleteMapping("/train-schedule/{id}")
+    public Result<?> deleteTrainSchedule(@PathVariable Long id) {
+        return trainScheduleService.deleteTrainSchedule(id);
     }
     
     /**

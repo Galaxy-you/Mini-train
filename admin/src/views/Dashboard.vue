@@ -102,13 +102,13 @@
 
 <script>
 import { ref, onMounted, reactive } from 'vue'
+import { ElMessage } from 'element-plus'
 import { User, Ship, List, Ticket } from '@element-plus/icons-vue'
 import * as echarts from 'echarts/core'
 import { BarChart, LineChart, PieChart } from 'echarts/charts'
 import { TitleComponent, TooltipComponent, GridComponent, LegendComponent } from 'echarts/components'
 import { CanvasRenderer } from 'echarts/renderers'
 import { adminAPI } from '@/api'
-import { dataHelper } from '@/utils/dataHelper'
 
 // 注册ECharts组件
 echarts.use([
@@ -149,23 +149,26 @@ export default {
     // 初始化数据
     onMounted(async () => {
       try {
-        // 获取统计数据
-        const statsData = await adminAPI.getStats()
-        Object.assign(stats, statsData)
-        
-        // 获取最新订单
-        const ordersData = await adminAPI.getLatestOrders()
-        latestOrders.value = dataHelper.ensureArray(ordersData)
-        
+        // 获取系统统计数据
+        const statsData = await adminAPI.stats.system()
+        if (statsData && statsData.data) {
+          Object.assign(stats, statsData.data)
+        }
+
         // 获取订单统计数据
-        const orderStatsData = await adminAPI.getOrderStats()
-        initOrderChart(orderStatsData)
-        
+        const orderStatsData = await adminAPI.stats.order()
+        if (orderStatsData && orderStatsData.data) {
+          initOrderChart(orderStatsData.data)
+        }
+
         // 获取热门车次数据
-        const trainStatsData = await adminAPI.getTrainStats()
-        initTrainChart(trainStatsData)
+        const trainStatsData = await adminAPI.stats.popular()
+        if (trainStatsData && trainStatsData.data) {
+          initTrainChart(trainStatsData.data)
+        }
       } catch (error) {
         console.error('加载仪表盘数据出错:', error)
+        ElMessage.error('加载仪表盘数据失败')
       }
     })
     

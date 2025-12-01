@@ -25,19 +25,19 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     /**
      * 查询今日订单数
      */
-    @Query("SELECT COUNT(o) FROM Order o WHERE DATE(o.createTime) = CURRENT_DATE")
+    @Query(value = "SELECT COUNT(*) FROM orders WHERE DATE(create_time) = CURDATE()", nativeQuery = true)
     long countTodayOrders();
 
     /**
      * 查询昨日订单数
      */
-    @Query("SELECT COUNT(o) FROM Order o WHERE DATE(o.createTime) = DATE_SUB(CURRENT_DATE, 1)")
+    @Query(value = "SELECT COUNT(*) FROM orders WHERE DATE(create_time) = DATE_SUB(CURDATE(), INTERVAL 1 DAY)", nativeQuery = true)
     long countYesterdayOrders();
 
     /**
      * 查询本月订单数
      */
-    @Query("SELECT COUNT(o) FROM Order o WHERE YEAR(o.createTime) = YEAR(CURRENT_DATE) AND MONTH(o.createTime) = MONTH(CURRENT_DATE)")
+    @Query(value = "SELECT COUNT(*) FROM orders WHERE YEAR(create_time) = YEAR(CURDATE()) AND MONTH(create_time) = MONTH(CURDATE())", nativeQuery = true)
     long countMonthOrders();
 
     /**

@@ -28,9 +28,9 @@ public interface TrainService {
     Result<TrainDetailDTO> getTrainDetail(Long trainId);
 
     /**
-     * 分页查询车站列表
+     * 分页查询站点列表（支持按名称和城市搜索）
      */
-    Result<?> listStations(String province, String city, PageRequest pageRequest);
+    Result<?> listStations(String name, String city, PageRequest pageRequest);
 
     /**
      * 添加车站
@@ -48,9 +48,9 @@ public interface TrainService {
     Result<?> deleteStation(Long id);
 
     /**
-     * 分页查询列车列表
+     * 分页查询列车列表（支持按车次编号和类型搜索）
      */
-    Result<?> listTrains(String type, String code, PageRequest pageRequest);
+    Result<?> listTrains(String code, String type, PageRequest pageRequest);
 
     /**
      * 添加列车

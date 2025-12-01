@@ -256,23 +256,24 @@ export default {
       fetchStationOptions()
     })
     
-    // 获取时刻表列表
+    // 获取车次日程列表（train_schedule表）
     const fetchScheduleList = async () => {
       loading.value = true
       try {
         const params = {
           page: pagination.currentPage - 1, // 后端从0开始计数
           size: pagination.pageSize,
-          trainCode: searchForm.trainCode || null,
-          stationName: searchForm.stationName || null
+          trainId: searchForm.trainId || null,
+          travelDate: searchForm.travelDate || null,
+          status: searchForm.status
         }
         
-        const result = await adminAPI.schedule.list(params)
+        const result = await adminAPI.trainSchedule.list(params)
         const processedData = dataHelper.handlePaginationData(result)
         scheduleList.value = processedData.content
         pagination.total = processedData.totalElements
       } catch (error) {
-        ElMessage.error(error.message || '获取时刻表列表失败')
+        ElMessage.error(error.message || '获取车次日程列表失败')
       } finally {
         loading.value = false
       }
@@ -418,34 +419,21 @@ export default {
         if (valid) {
           scheduleDialog.loading = true
           try {
-            // 格式化时间
-            const formatTime = (time) => {
-              if (!time) return null
-              const hours = time.getHours().toString().padStart(2, '0')
-              const minutes = time.getMinutes().toString().padStart(2, '0')
-              return `${hours}:${minutes}`
-            }
-            
-            // 准备提交的数据
+            // 准备提交的数据（train_schedule表只需要trainId, travelDate, status）
             const submitData = {
               trainId: scheduleForm.trainId,
-              stationId: scheduleForm.stationId,
-              arriveTime: formatTime(scheduleForm.arriveTime),
-              departureTime: formatTime(scheduleForm.departureTime),
-              stopMinutes: scheduleForm.stopMinutes,
-              distance: scheduleForm.distance,
-              sequence: scheduleForm.sequence,
-              type: scheduleForm.type
+              travelDate: scheduleForm.travelDate, // 格式：2025-06-01
+              status: scheduleForm.status || 1 // 默认为正常
             }
             
             if (scheduleDialog.isEdit) {
-              // 编辑时刻表
-              await adminAPI.schedule.update(scheduleForm.id, submitData)
-              ElMessage.success('时刻表更新成功')
+              // 编辑车次日程
+              await adminAPI.trainSchedule.update(scheduleForm.id, submitData)
+              ElMessage.success('车次日程更新成功')
             } else {
-              // 添加时刻表
-              await adminAPI.schedule.add(submitData)
-              ElMessage.success('时刻表添加成功')
+              // 添加车次日程
+              await adminAPI.trainSchedule.add(submitData)
+              ElMessage.success('车次日程添加成功')
             }
             scheduleDialog.visible = false
             fetchScheduleList() // 刷新列表
@@ -458,10 +446,10 @@ export default {
       })
     }
     
-    // 删除时刻表
+    // 删除车次日程
     const handleDeleteSchedule = (row) => {
       ElMessageBox.confirm(
-        `确定要删除${row.trainCode}的${row.stationName}站时刻表吗？`,
+        `确定要删除${row.trainCode}在${row.travelDate}的日程吗？`,
         '警告',
         {
           confirmButtonText: '确定',
@@ -470,8 +458,8 @@ export default {
         }
       ).then(async () => {
         try {
-          await adminAPI.schedule.delete(row.id)
-          ElMessage.success('时刻表删除成功')
+          await adminAPI.trainSchedule.delete(row.id)
+          ElMessage.success('车次日程删除成功')
           fetchScheduleList() // 刷新列表
         } catch (error) {
           ElMessage.error(error.message || '删除失败')
