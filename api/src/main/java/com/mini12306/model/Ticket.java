@@ -82,6 +82,7 @@ public class Ticket {
     
     // 票价
     @Column(name = "price")
+    @Convert(converter = Money.MoneyConverter.class)
     private Money price;
     
     // 发车日期

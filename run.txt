@@ -3,10 +3,12 @@
 
 // 运行客户端前端
 cd frontend
+npm install // 首次运行时输入
 npm run serve
 
 // 运行管理前端
 cd admin
+npm install // 首次运行时输入
 npm run serve
 
 // 跨设备

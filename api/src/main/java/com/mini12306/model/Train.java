@@ -49,7 +49,17 @@ public class Train {
     @Column(name = "seat_count")
     private Integer seatCount;
     
+    @Column(name = "high_seat_count")
+    private Integer highSeatCount;
+    
+    @Column(name = "mid_seat_count")
+    private Integer midSeatCount;
+    
+    @Column(name = "low_seat_count")
+    private Integer lowSeatCount;
+    
     @Column(name = "price")
+    @Convert(converter = Money.MoneyConverter.class)
     private Money price;
     
     @Column(name = "create_time")

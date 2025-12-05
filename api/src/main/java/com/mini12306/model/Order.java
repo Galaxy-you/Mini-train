@@ -22,6 +22,7 @@ public class Order {
     private Long userId;
     
     @Column(name = "total_amount")
+    @Convert(converter = Money.MoneyConverter.class)
     private Money totalAmount;
     
     @Transient // 非持久化字段，不存储到数据库

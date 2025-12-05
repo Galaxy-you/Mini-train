@@ -354,36 +354,57 @@ public class TrainServiceImpl implements TrainService {
     private List<TrainDetailDTO.SeatInfoDTO> generateSeatInfo(Train train) {
         List<TrainDetailDTO.SeatInfoDTO> seatInfo = new ArrayList<>();
         
-        // 根据列车类型生成不同座位类型
+        // 根据列车类型映射座位名称
         if ("高铁".equals(train.getType())) {
-            // 商务座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "商务座", train.getPrice().multiply(1.5), train.getSeatCount() / 5));
+            // 商务座（高级座）
+            if (train.getHighSeatCount() != null && train.getHighSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "商务座", train.getPrice().multiply(1.5), train.getHighSeatCount()));
+            }
             
-            // 一等座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "一等座", train.getPrice().multiply(1.2), train.getSeatCount() / 3));
+            // 一等座（中级座）
+            if (train.getMidSeatCount() != null && train.getMidSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "一等座", train.getPrice().multiply(1.2), train.getMidSeatCount()));
+            }
             
-            // 二等座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "二等座", train.getPrice(), train.getSeatCount() / 2));
+            // 二等座（次级座）
+            if (train.getLowSeatCount() != null && train.getLowSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "二等座", train.getPrice(), train.getLowSeatCount()));
+            }
         } else if ("动车".equals(train.getType())) {
-            // 一等座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "一等座", train.getPrice().multiply(1.2), train.getSeatCount() / 3));
+            // 动车没有商务座，只有一等座和二等座
+            // 一等座（中级座）
+            if (train.getMidSeatCount() != null && train.getMidSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "一等座", train.getPrice().multiply(1.2), train.getMidSeatCount()));
+            }
             
-            // 二等座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "二等座", train.getPrice(), train.getSeatCount() * 2 / 3));
+            // 二等座（次级座）
+            if (train.getLowSeatCount() != null && train.getLowSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "二等座", train.getPrice(), train.getLowSeatCount()));
+            }
         } else {
-            // 普通列车
-            // 硬卧
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "硬卧", train.getPrice().multiply(1.2), train.getSeatCount() / 3));
+            // 普通列车（快车、特快等）
+            // 软卧（高级座）
+            if (train.getHighSeatCount() != null && train.getHighSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "软卧", train.getPrice().multiply(1.5), train.getHighSeatCount()));
+            }
             
-            // 硬座
-            seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
-                "硬座", train.getPrice(), train.getSeatCount() * 2 / 3));
+            // 硬卧（中级座）
+            if (train.getMidSeatCount() != null && train.getMidSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "硬卧", train.getPrice().multiply(1.2), train.getMidSeatCount()));
+            }
+            
+            // 硬座（次级座）
+            if (train.getLowSeatCount() != null && train.getLowSeatCount() > 0) {
+                seatInfo.add(new TrainDetailDTO.SeatInfoDTO(
+                    "硬座", train.getPrice(), train.getLowSeatCount()));
+            }
         }
         
         return seatInfo;

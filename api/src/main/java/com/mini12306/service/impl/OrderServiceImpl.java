@@ -1,6 +1,7 @@
 package com.mini12306.service.impl;
 
 import com.mini12306.dto.BuyTicketRequest;
+import com.mini12306.model.Money;
 import com.mini12306.model.Order;
 import com.mini12306.model.Passenger;
 import com.mini12306.model.Result;
@@ -146,21 +147,60 @@ public class OrderServiceImpl implements OrderService {
             passengers.add(passengerOpt.get());
         }
         
-        // 验证余票
-        if (train.getSeatCount() < request.getPassengerIds().size()) {
-            return Result.fail("余票不足");
+        // 获取座位类型和计算实际价格
+        String seatType = request.getSeatType() != null ? request.getSeatType() : "二等座";
+        Money actualPrice = calculateSeatPrice(train, seatType);
+        if (actualPrice == null) {
+            return Result.fail("无法计算该座位类型的价格");
+        }
+        
+        // 验证余票（根据座位类型检查）
+        int requestedSeats = request.getPassengerIds().size();
+        
+        // 根据座位类型和列车类型检查余票
+        boolean hasSeat = false;
+        if ("高铁".equals(train.getType())) {
+            if ("商务座".equals(seatType)) {
+                hasSeat = train.getHighSeatCount() != null && train.getHighSeatCount() >= requestedSeats;
+            } else if ("一等座".equals(seatType)) {
+                hasSeat = train.getMidSeatCount() != null && train.getMidSeatCount() >= requestedSeats;
+            } else if ("二等座".equals(seatType)) {
+                hasSeat = train.getLowSeatCount() != null && train.getLowSeatCount() >= requestedSeats;
+            }
+        } else if ("动车".equals(train.getType())) {
+            if ("一等座".equals(seatType)) {
+                hasSeat = train.getMidSeatCount() != null && train.getMidSeatCount() >= requestedSeats;
+            } else if ("二等座".equals(seatType)) {
+                hasSeat = train.getLowSeatCount() != null && train.getLowSeatCount() >= requestedSeats;
+            }
+        } else {
+            // 普通列车
+            if ("软卧".equals(seatType)) {
+                hasSeat = train.getHighSeatCount() != null && train.getHighSeatCount() >= requestedSeats;
+            } else if ("硬卧".equals(seatType)) {
+                hasSeat = train.getMidSeatCount() != null && train.getMidSeatCount() >= requestedSeats;
+            } else if ("硬座".equals(seatType)) {
+                hasSeat = train.getLowSeatCount() != null && train.getLowSeatCount() >= requestedSeats;
+            }
+        }
+        
+        if (!hasSeat) {
+            return Result.fail("该座位类型余票不足");
         }
         
         // 创建订单
         Order order = new Order();
         order.setOrderNo(CodeGenerator.generateOrderNo());
         order.setUserId(userId);
-        order.setTotalAmount(train.getPrice().multiply(request.getPassengerIds().size()));
+        order.setTotalAmount(actualPrice.multiply(request.getPassengerIds().size()));
         order.setStatus("UNPAID");  // 使用英文状态标识
         order.setCreateTime(new Date());
         order.setPayTime(null);  // 未支付时 payTime 应该为 null
 
         orderRepository.save(order);
+        
+        // 获取当前座位类型已售出的数量（用于分配座位号）
+        int soldSeatsOfType = getSoldSeatsCount(train, seatType);
         
         // 创建车票
         for (int i = 0; i < passengers.size(); i++) {
@@ -185,13 +225,16 @@ public class OrderServiceImpl implements OrderService {
             // 设置城市信息
             ticket.setStartCity(request.getStartCity() != null ? request.getStartCity() : extractCityFromStation(request.getStartStation()));
             ticket.setEndCity(request.getEndCity() != null ? request.getEndCity() : extractCityFromStation(request.getEndStation()));
-            // 使用seat字段和seatInfo字段代替seatNumber
-            ticket.setSeat("" + (i + 1));
-            ticket.setCoach(String.valueOf(i + 1)); // 设置车厢号
-            ticket.setSeatInfo((i + 1) + "车" + (i + 1) + "号座"); // 完整座位信息
-            // 使用请求中的座位类型，如果没有则默认为"二等座"
-            ticket.setSeatType(request.getSeatType() != null ? request.getSeatType() : "二等座");
-            ticket.setPrice(train.getPrice());
+            
+            // 根据座位类型分配车厢和座位号
+            int coachNumber = getCoachNumberBySeatType(train.getType(), seatType);
+            int seatNumber = soldSeatsOfType + i + 1; // 当前座位类型已售 + 当前索引 + 1
+            
+            ticket.setSeat(String.valueOf(seatNumber));
+            ticket.setCoach(String.valueOf(coachNumber));
+            ticket.setSeatInfo(coachNumber + "车" + seatNumber + "号座");
+            ticket.setSeatType(seatType);
+            ticket.setPrice(actualPrice); // 使用实际价格
             ticket.setStartTime(train.getStartTime());
             ticket.setEndTime(train.getEndTime());
             // 设置旅行日期为当天
@@ -344,12 +387,41 @@ public class OrderServiceImpl implements OrderService {
                     Optional<Train> trainOpt = trainRepository.findById(ticket.getTrainId());
                     if (trainOpt.isPresent()) {
                         Train train = trainOpt.get();
+                        String seatType = ticket.getSeatType();
+                        
+                        // 根据座位类型恢复库存
+                        if ("高铁".equals(train.getType())) {
+                            if ("商务座".equals(seatType) && train.getHighSeatCount() != null) {
+                                train.setHighSeatCount(train.getHighSeatCount() + 1);
+                            } else if ("一等座".equals(seatType) && train.getMidSeatCount() != null) {
+                                train.setMidSeatCount(train.getMidSeatCount() + 1);
+                            } else if ("二等座".equals(seatType) && train.getLowSeatCount() != null) {
+                                train.setLowSeatCount(train.getLowSeatCount() + 1);
+                            }
+                        } else if ("动车".equals(train.getType())) {
+                            if ("一等座".equals(seatType) && train.getMidSeatCount() != null) {
+                                train.setMidSeatCount(train.getMidSeatCount() + 1);
+                            } else if ("二等座".equals(seatType) && train.getLowSeatCount() != null) {
+                                train.setLowSeatCount(train.getLowSeatCount() + 1);
+                            }
+                        } else {
+                            // 普通列车
+                            if ("软卧".equals(seatType) && train.getHighSeatCount() != null) {
+                                train.setHighSeatCount(train.getHighSeatCount() + 1);
+                            } else if ("硬卧".equals(seatType) && train.getMidSeatCount() != null) {
+                                train.setMidSeatCount(train.getMidSeatCount() + 1);
+                            } else if ("硬座".equals(seatType) && train.getLowSeatCount() != null) {
+                                train.setLowSeatCount(train.getLowSeatCount() + 1);
+                            }
+                        }
+                        
                         train.setSeatCount(train.getSeatCount() + 1);
                         trainRepository.save(train);
 
                         System.out.println("=== 取消已支付订单，恢复余票 ===");
                         System.out.println("列车ID: " + ticket.getTrainId());
-                        System.out.println("恢复后余票: " + train.getSeatCount());
+                        System.out.println("座位类型: " + seatType);
+                        System.out.println("恢复后总余票: " + train.getSeatCount());
                     }
                 }
             }
@@ -468,6 +540,7 @@ public class OrderServiceImpl implements OrderService {
         Ticket firstTicket = tickets.get(0);
         Long trainId = firstTicket.getTrainId();
         int ticketCount = tickets.size();
+        String seatType = firstTicket.getSeatType();
 
         // 查询列车信息
         Optional<Train> trainOpt = trainRepository.findById(trainId);
@@ -477,9 +550,59 @@ public class OrderServiceImpl implements OrderService {
 
         Train train = trainOpt.get();
 
-        // 检查余票是否足够
-        if (train.getSeatCount() < ticketCount) {
-            return Result.fail("余票不足（剩余" + train.getSeatCount() + "张）");
+        // 根据座位类型检查余票是否足够并扣减
+        boolean deducted = false;
+        if ("高铁".equals(train.getType())) {
+            if ("商务座".equals(seatType)) {
+                if (train.getHighSeatCount() != null && train.getHighSeatCount() >= ticketCount) {
+                    train.setHighSeatCount(train.getHighSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            } else if ("一等座".equals(seatType)) {
+                if (train.getMidSeatCount() != null && train.getMidSeatCount() >= ticketCount) {
+                    train.setMidSeatCount(train.getMidSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            } else if ("二等座".equals(seatType)) {
+                if (train.getLowSeatCount() != null && train.getLowSeatCount() >= ticketCount) {
+                    train.setLowSeatCount(train.getLowSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            }
+        } else if ("动车".equals(train.getType())) {
+            if ("一等座".equals(seatType)) {
+                if (train.getMidSeatCount() != null && train.getMidSeatCount() >= ticketCount) {
+                    train.setMidSeatCount(train.getMidSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            } else if ("二等座".equals(seatType)) {
+                if (train.getLowSeatCount() != null && train.getLowSeatCount() >= ticketCount) {
+                    train.setLowSeatCount(train.getLowSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            }
+        } else {
+            // 普通列车
+            if ("软卧".equals(seatType)) {
+                if (train.getHighSeatCount() != null && train.getHighSeatCount() >= ticketCount) {
+                    train.setHighSeatCount(train.getHighSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            } else if ("硬卧".equals(seatType)) {
+                if (train.getMidSeatCount() != null && train.getMidSeatCount() >= ticketCount) {
+                    train.setMidSeatCount(train.getMidSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            } else if ("硬座".equals(seatType)) {
+                if (train.getLowSeatCount() != null && train.getLowSeatCount() >= ticketCount) {
+                    train.setLowSeatCount(train.getLowSeatCount() - ticketCount);
+                    deducted = true;
+                }
+            }
+        }
+        
+        if (!deducted) {
+            return Result.fail("该座位类型余票不足");
         }
 
         // 扣减列车余票
@@ -520,5 +643,78 @@ public class OrderServiceImpl implements OrderService {
         }
         
         return Result.success("支付成功", (Order)orderDTO);
+    }
+    
+    /**
+     * 根据座位类型计算实际价格
+     */
+    private Money calculateSeatPrice(Train train, String seatType) {
+        if ("高铁".equals(train.getType())) {
+            if ("商务座".equals(seatType)) {
+                return train.getPrice().multiply(1.5);
+            } else if ("一等座".equals(seatType)) {
+                return train.getPrice().multiply(1.2);
+            } else if ("二等座".equals(seatType)) {
+                return train.getPrice();
+            }
+        } else if ("动车".equals(train.getType())) {
+            if ("一等座".equals(seatType)) {
+                return train.getPrice().multiply(1.2);
+            } else if ("二等座".equals(seatType)) {
+                return train.getPrice();
+            }
+        } else {
+            // 普通列车
+            if ("软卧".equals(seatType)) {
+                return train.getPrice().multiply(1.5);
+            } else if ("硬卧".equals(seatType)) {
+                return train.getPrice().multiply(1.2);
+            } else if ("硬座".equals(seatType)) {
+                return train.getPrice();
+            }
+        }
+        return null;
+    }
+    
+    /**
+     * 根据座位类型分配车厢号
+     */
+    private int getCoachNumberBySeatType(String trainType, String seatType) {
+        if ("高铁".equals(trainType)) {
+            if ("商务座".equals(seatType)) {
+                return 1; // 商务座1车
+            } else if ("一等座".equals(seatType)) {
+                return 2; // 一等座2车
+            } else if ("二等座".equals(seatType)) {
+                return 3; // 二等座3车
+            }
+        } else if ("动车".equals(trainType)) {
+            if ("一等座".equals(seatType)) {
+                return 1; // 一等座1车
+            } else if ("二等座".equals(seatType)) {
+                return 2; // 二等座2车
+            }
+        } else {
+            // 普通列车
+            if ("软卧".equals(seatType)) {
+                return 1; // 软卧1车
+            } else if ("硬卧".equals(seatType)) {
+                return 2; // 硬卧2车
+            } else if ("硬座".equals(seatType)) {
+                return 3; // 硬座3车
+            }
+        }
+        return 1; // 默认1车
+    }
+    
+    /**
+     * 获取该座位类型已售出的数量（用于计算下一个座位号）
+     * 通过查询数据库中该列车该座位类型的已售票数
+     */
+    private int getSoldSeatsCount(Train train, String seatType) {
+        // 查询该列车该座位类型的所有有效车票（状态为1）
+        List<Ticket> soldTickets = ticketRepository.findByTrainIdAndSeatTypeAndStatus(
+            train.getId(), seatType, 1);
+        return soldTickets != null ? soldTickets.size() : 0;
     }
 }

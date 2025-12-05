@@ -88,6 +88,13 @@ public class Money {
     }
     
     /**
+     * 乘法运算（整数重载）
+     */
+    public Money multiply(int factor) {
+        return new Money(this.amount.multiply(BigDecimal.valueOf(factor)));
+    }
+    
+    /**
      * 除法运算
      */
     public Money divide(double divisor) {

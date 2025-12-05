@@ -81,4 +81,9 @@ public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecif
         @Param("trainId") Long trainId, 
         @Param("travelDate") Date travelDate, 
         @Param("seatType") String seatType);
+    
+    /**
+     * 查询列车的指定座位类型的所有有效车票
+     */
+    List<Ticket> findByTrainIdAndSeatTypeAndStatus(Long trainId, String seatType, Integer status);
 }

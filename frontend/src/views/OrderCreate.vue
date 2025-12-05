@@ -233,7 +233,9 @@ export default {
           passengerIds: selectedPassengers.value,
           seatType: selectedSeatType.value,
           startStation: trainInfo.value.startStation,
-          endStation: trainInfo.value.endStation
+          endStation: trainInfo.value.endStation,
+          startStationId: trainInfo.value.startStationId,
+          endStationId: trainInfo.value.endStationId
         };
 
         const response = await orderAPI.createOrder(orderData);

@@ -18,13 +18,9 @@ USE Mini12306;
 DROP TABLE IF EXISTS passenger;
 DROP TABLE IF EXISTS ticket;
 DROP TABLE IF EXISTS orders;
-DROP TABLE IF EXISTS ticket_price;
-DROP TABLE IF EXISTS seat_type;
-DROP TABLE IF EXISTS train_schedule;
 DROP TABLE IF EXISTS train_route;
 DROP TABLE IF EXISTS train;
 DROP TABLE IF EXISTS station;
-DROP TABLE IF EXISTS user_token;
 DROP TABLE IF EXISTS user_account;
 DROP TABLE IF EXISTS admin_user;
 
@@ -60,15 +56,7 @@ CREATE TABLE user_account (
     auth_status INT DEFAULT 0 COMMENT '身份验证状态：0-未验证，1-已验证'
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户账户表';
 
--- 创建用户令牌表
-CREATE TABLE user_token (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    user_id BIGINT NOT NULL,
-    token VARCHAR(255) NOT NULL UNIQUE,
-    expire_time TIMESTAMP NOT NULL,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (user_id) REFERENCES user_account(id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户令牌表';
+
 
 -- 创建车站信息表
 CREATE TABLE station (
@@ -98,6 +86,9 @@ CREATE TABLE train (
     end_time VARCHAR(10) COMMENT '到达时间',
     duration INT COMMENT '运行时间(分钟)',
     seat_count INT COMMENT '座位数',
+    high_seat_count INT COMMENT '高级座位数（高铁/动车：商务座，普快：软卧）',
+    mid_seat_count INT COMMENT '中级座位数（高铁/动车：一等座，普快：硬卧）',
+    low_seat_count INT COMMENT '次级座位数（高铁/动车：二等座，普快：硬座）',
     price DECIMAL(10,2) COMMENT '票价',
     create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -121,44 +112,6 @@ CREATE TABLE train_route (
     FOREIGN KEY (station_id) REFERENCES station(id),
     UNIQUE KEY unique_train_station (train_id, station_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='列车路线表';
-
--- 创建车次日程表
-CREATE TABLE train_schedule (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    train_id BIGINT NOT NULL,
-    travel_date DATE NOT NULL,
-    status INT DEFAULT 1 COMMENT '状态：0-停运，1-正常',
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (train_id) REFERENCES train(id),
-    UNIQUE KEY unique_train_date (train_id, travel_date)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='车次日程表';
-
--- 创建座位类型表
-CREATE TABLE seat_type (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(20) NOT NULL UNIQUE COMMENT '座位类型名称',
-    code VARCHAR(10) COMMENT '座位类型代码',
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='座位类型表';
-
--- 创建车票价格表
-CREATE TABLE ticket_price (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
-    train_id BIGINT NOT NULL,
-    start_station_id BIGINT NOT NULL,
-    end_station_id BIGINT NOT NULL,
-    seat_type_id BIGINT NOT NULL,
-    price DECIMAL(10,2) NOT NULL,
-    create_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    update_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY (train_id) REFERENCES train(id),
-    FOREIGN KEY (start_station_id) REFERENCES station(id),
-    FOREIGN KEY (end_station_id) REFERENCES station(id),
-    FOREIGN KEY (seat_type_id) REFERENCES seat_type(id),
-    UNIQUE KEY unique_route_seat (train_id, start_station_id, end_station_id, seat_type_id)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='车票价格表';
 
 -- 创建订单表
 CREATE TABLE orders (
@@ -227,14 +180,7 @@ CREATE TABLE passenger (
 -- 第三步：初始化基础数据
 -- ========================================
 
--- 初始化座位类型
-INSERT INTO seat_type (name, code) VALUES
-('商务座', 'SWZ'),
-('一等座', 'YDZ'),
-('二等座', 'EDZ'),
-('硬座', 'YZ'),
-('硬卧', 'YW'),
-('软卧', 'RW');
+
 
 -- 初始化管理员账号（用户名：admin，密码：admin123）
 INSERT INTO admin_user (username, password, role, real_name, status)
@@ -289,66 +235,66 @@ INSERT INTO station (name, code, city, province, type, create_time, update_time)
 -- 第五步：初始化列车数据
 -- ========================================
 
-INSERT INTO train (code, type, start_station_id, end_station_id, start_station, end_station, start_time, end_time, duration, seat_count, price, create_time, update_time)
-SELECT 'G1234', '高铁', bj.id, sh.id, '北京站', '上海站', '08:00', '13:00', 300, 298, 553.50, NOW(), NOW()
+INSERT INTO train (code, type, start_station_id, end_station_id, start_station, end_station, start_time, end_time, duration, seat_count, high_seat_count, mid_seat_count, low_seat_count, price, create_time, update_time)
+SELECT 'G1234', '高铁', bj.id, sh.id, '北京站', '上海站', '08:00', '13:00', 300, 298, 50, 98, 150, 553.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '上海站') sh
 UNION ALL
-SELECT 'D5678', '动车', bj.id, gz.id, '北京站', '广州站', '10:30', '18:30', 480, 200, 219.50, NOW(), NOW()
+SELECT 'D5678', '动车', bj.id, gz.id, '北京站', '广州站', '10:30', '18:30', 480, 200, 0, 60, 140, 219.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '广州站') gz
 UNION ALL
-SELECT 'K9876', '快车', sh.id, gz.id, '上海站', '广州站', '14:20', '次日06:20', 960, 100, 112.00, NOW(), NOW()
+SELECT 'K9876', '快车', sh.id, gz.id, '上海站', '广州站', '14:20', '次日06:20', 960, 100, 20, 30, 50, 112.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '上海站') sh, (SELECT id FROM station WHERE name = '广州站') gz
 UNION ALL
 -- 京沪线高铁
-SELECT 'G1', '高铁', bj.id, sh.id, '北京站', '上海站', '07:00', '11:28', 268, 1200, 553.00, NOW(), NOW()
+SELECT 'G1', '高铁', bj.id, sh.id, '北京站', '上海站', '07:00', '11:28', 268, 1200, 200, 400, 600, 553.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '上海站') sh
 UNION ALL
-SELECT 'G2', '高铁', sh.id, bj.id, '上海站', '北京站', '08:05', '12:33', 268, 1200, 553.00, NOW(), NOW()
+SELECT 'G2', '高铁', sh.id, bj.id, '上海站', '北京站', '08:05', '12:33', 268, 1200, 200, 400, 600, 553.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '上海站') sh, (SELECT id FROM station WHERE name = '北京站') bj
 UNION ALL
-SELECT 'G3', '高铁', bj.id, sh.id, '北京站', '上海站', '09:00', '13:35', 275, 1200, 553.00, NOW(), NOW()
+SELECT 'G3', '高铁', bj.id, sh.id, '北京站', '上海站', '09:00', '13:35', 275, 1200, 200, 400, 600, 553.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '上海站') sh
 UNION ALL
 -- 京广线高铁
-SELECT 'G71', '高铁', bj.id, gz.id, '北京站', '广州站', '08:00', '16:22', 502, 1200, 862.00, NOW(), NOW()
+SELECT 'G71', '高铁', bj.id, gz.id, '北京站', '广州站', '08:00', '16:22', 502, 1200, 200, 400, 600, 862.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '广州站') gz
 UNION ALL
-SELECT 'G72', '高铁', gz.id, bj.id, '广州站', '北京站', '08:30', '16:52', 502, 1200, 862.00, NOW(), NOW()
+SELECT 'G72', '高铁', gz.id, bj.id, '广州站', '北京站', '08:30', '16:52', 502, 1200, 200, 400, 600, 862.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '广州站') gz, (SELECT id FROM station WHERE name = '北京站') bj
 UNION ALL
 -- 沪广线高铁
-SELECT 'G101', '高铁', sh.id, gz.id, '上海站', '广州站', '09:17', '17:06', 469, 1000, 793.50, NOW(), NOW()
+SELECT 'G101', '高铁', sh.id, gz.id, '上海站', '广州站', '09:17', '17:06', 469, 1000, 150, 350, 500, 793.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '上海站') sh, (SELECT id FROM station WHERE name = '广州站') gz
 UNION ALL
-SELECT 'G102', '高铁', gz.id, sh.id, '广州站', '上海站', '10:15', '18:04', 469, 1000, 793.50, NOW(), NOW()
+SELECT 'G102', '高铁', gz.id, sh.id, '广州站', '上海站', '10:15', '18:04', 469, 1000, 150, 350, 500, 793.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '广州站') gz, (SELECT id FROM station WHERE name = '上海站') sh
 UNION ALL
 -- 京哈线高铁
-SELECT 'G381', '高铁', bj.id, heb.id, '北京站', '哈尔滨西站', '06:48', '14:26', 458, 800, 635.00, NOW(), NOW()
+SELECT 'G381', '高铁', bj.id, heb.id, '北京站', '哈尔滨西站', '06:48', '14:26', 458, 800, 130, 270, 400, 635.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '哈尔滨西站') heb
 UNION ALL
-SELECT 'G382', '高铁', heb.id, bj.id, '哈尔滨西站', '北京站', '07:15', '14:53', 458, 800, 635.00, NOW(), NOW()
+SELECT 'G382', '高铁', heb.id, bj.id, '哈尔滨西站', '北京站', '07:15', '14:53', 458, 800, 130, 270, 400, 635.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '哈尔滨西站') heb, (SELECT id FROM station WHERE name = '北京站') bj
 UNION ALL
 -- 京沪动车
-SELECT 'D321', '动车', bj.id, sh.id, '北京站', '上海站', '13:20', '19:45', 385, 600, 460.80, NOW(), NOW()
+SELECT 'D321', '动车', bj.id, sh.id, '北京站', '上海站', '13:20', '19:45', 385, 600, 0, 200, 400, 460.80, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '北京站') bj, (SELECT id FROM station WHERE name = '上海站') sh
 UNION ALL
-SELECT 'D322', '动车', sh.id, bj.id, '上海站', '北京站', '14:10', '20:35', 385, 600, 460.80, NOW(), NOW()
+SELECT 'D322', '动车', sh.id, bj.id, '上海站', '北京站', '14:10', '20:35', 385, 600, 0, 200, 400, 460.80, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '上海站') sh, (SELECT id FROM station WHERE name = '北京站') bj
 UNION ALL
 -- 成渝高铁
-SELECT 'G8501', '高铁', cd.id, cq.id, '成都东站', '重庆北站', '07:46', '09:11', 85, 600, 154.00, NOW(), NOW()
+SELECT 'G8501', '高铁', cd.id, cq.id, '成都东站', '重庆北站', '07:46', '09:11', 85, 600, 100, 200, 300, 154.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '成都东站') cd, (SELECT id FROM station WHERE name = '重庆北站') cq
 UNION ALL
-SELECT 'G8502', '高铁', cq.id, cd.id, '重庆北站', '成都东站', '08:35', '10:00', 85, 600, 154.00, NOW(), NOW()
+SELECT 'G8502', '高铁', cq.id, cd.id, '重庆北站', '成都东站', '08:35', '10:00', 85, 600, 100, 200, 300, 154.00, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '重庆北站') cq, (SELECT id FROM station WHERE name = '成都东站') cd
 UNION ALL
 -- 武广高铁
-SELECT 'G1001', '高铁', wh.id, gz.id, '武昌站', '广州站', '08:02', '11:27', 205, 1000, 463.50, NOW(), NOW()
+SELECT 'G1001', '高铁', wh.id, gz.id, '武昌站', '广州站', '08:02', '11:27', 205, 1000, 150, 350, 500, 463.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '武昌站') wh, (SELECT id FROM station WHERE name = '广州站') gz
 UNION ALL
-SELECT 'G1002', '高铁', gz.id, wh.id, '广州站', '武昌站', '09:03', '12:28', 205, 1000, 463.50, NOW(), NOW()
+SELECT 'G1002', '高铁', gz.id, wh.id, '广州站', '武昌站', '09:03', '12:28', 205, 1000, 150, 350, 500, 463.50, NOW(), NOW()
 FROM (SELECT id FROM station WHERE name = '广州站') gz, (SELECT id FROM station WHERE name = '武昌站') wh;
 
 -- ========================================
@@ -443,27 +389,6 @@ SELECT t.id, s.id, 2, '09:11:00', NULL, 0, 308, NOW(), NOW()
 FROM train t, station s WHERE t.code = 'G8501' AND s.name = '重庆北站';
 
 -- ========================================
--- 第七步：初始化车次日程数据（未来30天）
--- ========================================
-
-INSERT INTO train_schedule (train_id, travel_date, status, create_time, update_time)
-SELECT
-    t.id as train_id,
-    DATE_ADD(CURDATE(), INTERVAL n.n DAY) as travel_date,
-    1 as status,
-    NOW() as create_time,
-    NOW() as update_time
-FROM train t
-CROSS JOIN (
-    SELECT 0 as n UNION ALL SELECT 1 UNION ALL SELECT 2 UNION ALL SELECT 3 UNION ALL SELECT 4 UNION ALL
-    SELECT 5 UNION ALL SELECT 6 UNION ALL SELECT 7 UNION ALL SELECT 8 UNION ALL SELECT 9 UNION ALL
-    SELECT 10 UNION ALL SELECT 11 UNION ALL SELECT 12 UNION ALL SELECT 13 UNION ALL SELECT 14 UNION ALL
-    SELECT 15 UNION ALL SELECT 16 UNION ALL SELECT 17 UNION ALL SELECT 18 UNION ALL SELECT 19 UNION ALL
-    SELECT 20 UNION ALL SELECT 21 UNION ALL SELECT 22 UNION ALL SELECT 23 UNION ALL SELECT 24 UNION ALL
-    SELECT 25 UNION ALL SELECT 26 UNION ALL SELECT 27 UNION ALL SELECT 28 UNION ALL SELECT 29
-) n;
-
--- ========================================
 -- 完成！显示统计信息
 -- ========================================
 
@@ -478,13 +403,7 @@ SELECT COUNT(*) as total_trains, COUNT(DISTINCT type) as train_types FROM train;
 SELECT 'Step 3: 列车路线统计' as step;
 SELECT COUNT(*) as total_routes, COUNT(DISTINCT train_id) as trains_with_routes FROM train_route;
 
-SELECT 'Step 4: 车次日程统计' as step;
-SELECT COUNT(*) as total_schedules, COUNT(DISTINCT train_id) as trains_with_schedules FROM train_schedule;
-
-SELECT 'Step 5: 座位类型统计' as step;
-SELECT COUNT(*) as total_seat_types FROM seat_type;
-
-SELECT 'Step 6: 管理员账号' as step;
+SELECT 'Step 4: 管理员账号' as step;
 SELECT username, real_name, role, status FROM admin_user;
 
 COMMIT;
