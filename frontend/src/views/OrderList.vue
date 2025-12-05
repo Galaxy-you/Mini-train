@@ -1,5 +1,27 @@
 <template>
   <div class="order-list-container">
+    <!-- 搜索栏 -->
+    <el-card class="search-card" shadow="never">
+      <div class="search-bar">
+        <el-input
+            v-model="searchKeyword"
+            placeholder="输入起始站名称查询（如：上海、北京等）"
+            class="search-input"
+            clearable
+            @keyup.enter="handleSearch"
+        >
+          <template #suffix>
+            <el-button :icon="Search" @click="handleSearch" />
+          </template>
+        </el-input>
+        <el-button type="info" @click="clearSearch" v-if="searchKeyword">清除搜索</el-button>
+      </div>
+      <div class="search-tips">
+        <span v-if="!searchKeyword && isSearching">下面显示的是搜索的结果</span>
+        <span v-else-if="!searchKeyword">帮助提示：输入起始站名称创会筛选订单</span>
+      </div>
+    </el-card>
+
     <!-- 标签页 -->
     <el-card class="tab-card" shadow="never">
       <el-tabs v-model="activeTab">
@@ -120,6 +142,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRouter } from 'vue-router';
 import { ElMessage, ElMessageBox } from 'element-plus';
 import { Tickets, Wallet, SuccessFilled, CircleClose, Right } from '@element-plus/icons-vue';
+import { Search } from '@element-plus/icons-vue';
 import { orderAPI } from '@/api';
 import dataHelper from '@/utils/dataHelper';
 import { formatStation, formatPrice } from '@/utils/formatters';
@@ -139,6 +162,8 @@ export default {
     const allOrders = ref([]); // 存储所有订单
     const orders = ref([]); // 存储过滤后的订单
     const activeTab = ref('all');
+    const searchKeyword = ref('');
+    const isSearching = ref(false); // 是否正在搜索状态
 
     const fetchOrders = async () => {
       loading.value = true;
@@ -275,6 +300,54 @@ export default {
       return statusMap[status] || status;
     };
 
+    const handleSearch = async () => {
+      if (!searchKeyword.value.trim()) {
+        ElMessage.warning('请输入起始站名称');
+        return;
+      }
+
+      loading.value = true;
+      isSearching.value = true;
+      try {
+        const response = await orderAPI.searchOrdersByStartStation(searchKeyword.value);
+        const extractedData = dataHelper.extractApiData(response);
+        const orderData = dataHelper.ensureArray(extractedData);
+        allOrders.value = orderData; // 更新为搜索结果
+        orders.value = filterOrders(orderData); // 应用过滤
+        
+        if (orderData.length === 0) {
+          ElMessage.info('未找到匹配的订单');
+        } else {
+          ElMessage.success(`找到 ${orderData.length} 个订单`);
+        }
+      } catch (error) {
+        console.error('搜索订单失败:', error);
+        ElMessage.error('搜索订单失败');
+      } finally {
+        loading.value = false;
+      }
+    };
+
+    const clearSearch = async () => {
+      searchKeyword.value = '';
+      isSearching.value = false;
+      // 重新加载所有订单
+      loading.value = true;
+      try {
+        const response = await orderAPI.listUserOrders();
+        const extractedData = dataHelper.extractApiData(response);
+        const orderData = dataHelper.ensureArray(extractedData);
+        allOrders.value = orderData;
+        orders.value = filterOrders(orderData);
+        ElMessage.success('已清除搜索条件');
+      } catch (error) {
+        console.error('重新加载订单失败:', error);
+        ElMessage.error('重新加载失败');
+      } finally {
+        loading.value = false;
+      }
+    };
+
     onMounted(() => {
       fetchOrders();
     });
@@ -283,6 +356,8 @@ export default {
       loading,
       orders,
       activeTab,
+      searchKeyword,
+      Search,
       viewOrderDetail,
       cancelOrder,
       payOrder,
@@ -291,7 +366,9 @@ export default {
       calculateDuration,
       formatTime,
       formatStation,
-      formatPrice
+      formatPrice,
+      handleSearch,
+      clearSearch
     };
   }
 }
@@ -301,6 +378,29 @@ export default {
 .order-list-container {
   max-width: 1000px;
   margin: 0 auto;
+}
+
+/* 搜索一样式 */
+.search-card {
+  margin-bottom: 24px;
+  border-radius: 12px;
+}
+
+.search-bar {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.search-input {
+  flex: 1;
+}
+
+.search-tips {
+  font-size: 12px;
+  color: #8c8c8c;
+  margin-top: 8px;
 }
 
 /* 标签卡片 */

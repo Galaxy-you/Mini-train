@@ -3,6 +3,7 @@ package com.mini12306.repository;
 import com.mini12306.model.Order;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -50,4 +51,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
      */
     @Query("SELECT o FROM Order o ORDER BY o.createTime DESC")
     List<Order> findLatestOrders();
+    
+    /**
+     * 按用户ID和起始站查询订单
+     */
+    @Query("SELECT o FROM Order o WHERE o.userId = :userId ORDER BY o.createTime DESC")
+    List<Order> findByUserIdOrderByCreateTimeDesc(@Param("userId") Long userId);
 }

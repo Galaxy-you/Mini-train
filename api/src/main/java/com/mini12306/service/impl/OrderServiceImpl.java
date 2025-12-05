@@ -302,7 +302,7 @@ public class OrderServiceImpl implements OrderService {
     
     @Override
     public Result<List<Order>> listUserOrders(Long userId) {
-        List<Order> orders = orderRepository.findByUserId(userId);
+        List<Order> orders = orderRepository.findByUserIdOrderByCreateTimeDesc(userId);
         List<OrderDTO> orderDTOs = new ArrayList<>();
         
         // 为每个订单加载票数信息并转换为OrderDTO
@@ -708,13 +708,54 @@ public class OrderServiceImpl implements OrderService {
     }
     
     /**
-     * 获取该座位类型已售出的数量（用于计算下一个座位号）
-     * 通过查询数据库中该列车该座位类型的已售票数
+     * 获取该座位类型已売出的数量（用于计算下一个座位号）
+     * 通过查询数据库中该列车该座位类型的已売票数
      */
     private int getSoldSeatsCount(Train train, String seatType) {
         // 查询该列车该座位类型的所有有效车票（状态为1）
         List<Ticket> soldTickets = ticketRepository.findByTrainIdAndSeatTypeAndStatus(
             train.getId(), seatType, 1);
         return soldTickets != null ? soldTickets.size() : 0;
+    }
+    
+    @Override
+    public Result<List<Order>> searchOrdersByStartStation(Long userId, String startStation) {
+        // 获取用户的所有订单（按创建时间倒序）
+        List<Order> orders = orderRepository.findByUserIdOrderByCreateTimeDesc(userId);
+        List<OrderDTO> filteredOrders = new ArrayList<>();
+        
+        // 根据起始站筛选订单
+        for (Order order : orders) {
+            List<Ticket> tickets = ticketRepository.findByOrderId(order.getId());
+            
+            // 如果有票，检查起始站是否匹配
+            if (!tickets.isEmpty()) {
+                Ticket firstTicket = tickets.get(0);
+                // 验证起始站是否匹配
+                if (firstTicket.getStartStation() != null && 
+                    (firstTicket.getStartStation().contains(startStation) || 
+                     startStation.equals(firstTicket.getStartStation()))) {
+                    
+                    order.setTicketCount(tickets.size());
+                    
+                    // 创建扩展的OrderDTO对象
+                    OrderDTO orderDTO = new OrderDTO(order);
+                    
+                    // 从第一张票获取车次和站点信息
+                    orderDTO.setTrainNumber(firstTicket.getTrainCode());
+                    orderDTO.setTrainType(firstTicket.getTrainType());
+                    orderDTO.setStartStation(firstTicket.getStartStation());
+                    orderDTO.setEndStation(firstTicket.getEndStation());
+                    orderDTO.setDepartureTime(firstTicket.getStartTime());
+                    orderDTO.setArrivalTime(firstTicket.getEndTime());
+                    
+                    filteredOrders.add(orderDTO);
+                }
+            }
+        }
+        
+        // 创建一个新的Order列表以避免类型转换警告
+        List<Order> resultList = new ArrayList<>(filteredOrders);
+        return Result.success(resultList);
     }
 }

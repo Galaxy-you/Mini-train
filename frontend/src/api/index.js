@@ -151,6 +151,14 @@ export const orderAPI = {
       method: 'post',
       params: { paymentMethod }
     });
+  },
+  // 按起始站搜索订单
+  searchOrdersByStartStation(startStation) {
+    return request({
+      url: '/order/search',
+      method: 'get',
+      params: { startStation }
+    });
   }
 };
 

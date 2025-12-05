@@ -40,4 +40,9 @@ public interface OrderService {
      * 支付确认 - 更新订单状态为已支付
      */
     Result<Order> confirmPayment(Long userId, String orderNo, Integer paymentMethod);
+    
+    /**
+     * 按起始站控知查询订单
+     */
+    Result<List<Order>> searchOrdersByStartStation(Long userId, String startStation);
 }

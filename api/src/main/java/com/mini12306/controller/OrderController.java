@@ -73,4 +73,13 @@ public class OrderController {
         Long userId = (Long) request.getAttribute("userId");
         return orderService.confirmPayment(userId, orderNo, paymentMethod);
     }
+    
+    /**
+     * 按起始站查询订单
+     */
+    @GetMapping("/search")
+    public Result<?> searchOrdersByStartStation(HttpServletRequest request, @RequestParam String startStation) {
+        Long userId = (Long) request.getAttribute("userId");
+        return orderService.searchOrdersByStartStation(userId, startStation);
+    }
 }
