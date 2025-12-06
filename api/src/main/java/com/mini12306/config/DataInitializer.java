@@ -136,14 +136,14 @@ public class DataInitializer implements CommandLineRunner {
         // 初始化用户账户数据
         if (accountRepository.count() == 0) {
             Account account = new Account();
-            account.setUsername("xiaolitongxue");
-            account.setPassword("$2a$10$eXFr7q9MVuV0pAtcoCNvRO/X0uNPGRvlmJoWJIZabtwMruOOIFgOm");
-            account.setRealName("鲁献公");
-            account.setCardId("520123199809211420");
-            account.setPhone("19376492291");
+            account.setUsername("test_user");
+            account.setPassword("$2a$10$Tr9Ddw.25NLt.5FNqpn1nOcwab6hEWULsflw2KuQ3iA8AzV7JXWVC");
+            account.setRealName("张三");
+            account.setCardId("341003200512341111");
+            account.setPhone("19512345678");
             account.setAuthStatus(1);
-            account.setCreateTime(parseDate("2025-06-01 11:05:42"));
-            account.setUpdateTime(parseDate("2025-06-01 11:05:42"));
+            account.setCreateTime(parseDate("2025-12-01 8:00:00"));
+            account.setUpdateTime(parseDate("2025-12-01 8:00:00"));
             accountRepository.save(account);
         }
     }

@@ -66,7 +66,9 @@ public class TrainRouteServiceImpl implements TrainRouteService {
     @Override
     public Result<?> getTrainRoutesByTrainId(Long trainId) {
         try {
+            System.out.println("查询列车路线，列车ID: " + trainId);
             List<TrainRoute> routes = trainRouteRepository.findByTrainIdOrderByStationOrderAsc(trainId);
+            System.out.println("找到路线数量: " + routes.size());
 
             List<Map<String, Object>> dtoList = new ArrayList<>();
             for (TrainRoute route : routes) {
@@ -75,6 +77,7 @@ public class TrainRouteServiceImpl implements TrainRouteService {
 
             return Result.success("查询成功", dtoList);
         } catch (Exception e) {
+            e.printStackTrace();
             return Result.fail("查询列车路线失败：" + e.getMessage());
         }
     }

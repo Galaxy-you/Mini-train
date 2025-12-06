@@ -28,6 +28,7 @@ public class TicketDetailDTO {
     private String passengerCard;
     
     // 车次信息
+    private Long trainId;
     private String trainCode;
     private String trainType;
     
@@ -63,6 +64,7 @@ public class TicketDetailDTO {
         this.passengerName = ticket.getPassengerName();
         this.passengerCard = ticket.getPassengerCard();
         
+        this.trainId = train.getId();
         this.trainCode = train.getCode();
         this.trainType = train.getType();
         
@@ -91,6 +93,7 @@ public class TicketDetailDTO {
         this.passengerName = ticket.getPassengerName();
         this.passengerCard = ticket.getPassengerCard();
         
+        this.trainId = ticket.getTrainId();
         this.trainCode = ticket.getTrainCode();
         this.trainType = ticket.getTrainType();
         

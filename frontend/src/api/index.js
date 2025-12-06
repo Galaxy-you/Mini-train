@@ -63,6 +63,13 @@ export const trainAPI = {
       url: `/train/${id}`,
       method: 'get'
     });
+  },
+  // 获取列车路线
+  getTrainRoute(trainId) {
+    return request({
+      url: `/train-route/train/${trainId}`,
+      method: 'get'
+    });
   }
 };
 
